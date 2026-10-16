@@ -77,21 +77,39 @@ python scripts/05_langchain.py --strategy sentence "团队版多少钱？"
 | 后端 | 原生 `rag/vector_store.py` | LlamaIndex `04` | LangChain `05` |
 |------|---------------------------|-----------------|----------------|
 | 默认 | `faiss`（IndexFlatIP） | **`simple`**（内置 SimpleVectorStore，dict+JSON 落盘，零依赖） | `faiss` |
-| 可选 | `sqlite`（stdlib 单文件） | `faiss`（需 `llama-index-vector-stores-faiss`；向量文件 `faiss.idx` + docstore 分开持久化） | **`sqlite`**（自定义 `SQLiteVectorStore(LangChain VectorStore)` 适配层，内部复用原生 `SqliteVectorStore`） |
-| 生产 | pgvector / Qdrant / Milvus | pgvector / Qdrant / Milvus（官方集成包） | pgvector / Chroma / Qdrant |
+| 可选 1 | `sqlite`（stdlib 单文件） | `faiss`（需 `llama-index-vector-stores-faiss`；向量文件 `faiss.idx` + docstore 分开持久化） | **`sqlite`**（自定义 `SQLiteVectorStore(LangChain VectorStore)` 适配层，内部复用原生 `SqliteVectorStore`） |
+| 可选 2 | — | **`chroma`**（Chroma 嵌入式向量数据库，`llama-index-vector-stores-chroma`） | **`chroma`**（嵌入式向量数据库，`langchain-chroma` 正式包） |
+| 可选 3 | —（见 docs/03/06 练习） | **`pgvector`**（PostgreSQL+pgvector 扩展，`llama-index-vector-stores-postgres`） | **`pgvector`**（同左，`langchain-postgres`） |
+| 其他生产 | pgvector / Qdrant / Milvus | pgvector / Qdrant / Milvus（官方集成包） | pgvector / Qdrant / Weaviate |
+
+**从文件到数据库的四级形态**：`simple`/`faiss`（纯文件，零运维）→ `chroma`（嵌入式数据库，pip 装完即用）→ `pgvector`（服务端数据库，已扩展为向量场景的现有 PG 直接复用——多数团队的最优解）→ Qdrant/Milvus（专职向量数据库集群）。三版接口同构，换后端 = 换 `VECTOR_STORE` 取值。
+
+**pgvector 用法**（04/05 通用）：
 
 ```bash
-VECTOR_STORE=sqlite python scripts/01_build_index.py       # 原生
-VECTOR_STORE=faiss  python scripts/04_llamaindex.py "…"    # LlamaIndex
-VECTOR_STORE=sqlite python scripts/05_langchain.py "…"     # LangChain
+# 1. 准备数据库（已启用 pgvector 扩展）
+docker run -d -e POSTGRES_PASSWORD=rag -e POSTGRES_USER=rag -e POSTGRES_DB=rag \
+  -p 5432:5432 pgvector/pgvector:pg16
+docker exec -it <容器> psql -U rag -d rag -c "CREATE EXTENSION IF NOT EXISTS vector;"
+
+# 2. 指定连接串建库/查询（表名/集合按分块策略隔离：rag_recursive 等）
+PG_CONN=postgresql+psycopg2://rag:rag@localhost:5432/rag VECTOR_STORE=pgvector \
+  python scripts/04_llamaindex.py "你的问题"
+```
+
+```bash
+VECTOR_STORE=sqlite  python scripts/01_build_index.py       # 原生
+VECTOR_STORE=chroma  python scripts/04_llamaindex.py "…"    # LlamaIndex
+VECTOR_STORE=pgvector python scripts/05_langchain.py "…"    # LangChain
 ```
 
 注意：
 
-1. **同名不同义**：`VECTOR_STORE=sqlite` 在 LlamaIndex 脚本会报错并提示改用 `simple|faiss`（其生态的单机库是 Simple/FAISS，SQL 系走 pgvector）——报错信息里写了各版可选值。
+1. **同名不同义**：`VECTOR_STORE=sqlite` 在 LlamaIndex 脚本会报错并提示改用 `simple|faiss|chroma|pgvector`（其生态的单机库是 Simple/FAISS/Chroma，SQL 系走 pgvector）——报错信息里写了各版可选值。
 2. **适配层模式**（05 的 `SQLiteVectorStore`）：框架的存储接口（LangChain `VectorStore` / LlamaIndex `VectorStore`）实现 3~4 个方法即可挂上任意后端，是接自研存储的标准姿势；05 演示 LangChain 版、原生 `SqliteVectorStore` 提供全部逻辑。
-3. 缓存目录按（策略 × 后端）隔离：`index_llamaindex/<strategy>/<store>`、`index_langchain/<strategy>/<store>`，切换后端自动重建、不读错缓存。
+3. 缓存目录按（策略 × 后端）隔离：`index_llamaindex/<strategy>/<store>`、`index_langchain/<strategy>/<store>`，切换后端自动重建、不读错缓存。Chroma 以 `chroma.sqlite3` 为建库标记；**pgvector 的表在服务端，本地只放 `.built` 标记**——手动删表/删集合后要同时删掉标记才会重建，重建时脚本会先清空同名表/集合防重复。
 4. 无论哪版，**换后端必须用同一 Embedding 模型重建**，向量空间不通用。
+5. 量纲差异不影响混合召回：Chroma/pgvector 返回 L2 或余弦距离、原生 sqlite 返回余弦相似度——RRF 融合只用**排名**。
 
 ## LangChain 版（scripts/05_langchain.py）
 

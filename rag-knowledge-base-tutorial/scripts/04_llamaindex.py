@@ -18,8 +18,10 @@
 
 向量库（VECTOR_STORE，与原生版同名但取值属于 LlamaIndex 生态）：
     simple（默认）→ 内置 SimpleVectorStore（dict 存储，零依赖）
-    faiss         → llama-index-vector-stores-faiss（需额外安装，单机大规模）
-    生产 → pgvector / Qdrant / Milvus（同接口，见 docs/06）
+    faiss         → llama-index-vector-stores-faiss（单机大规模）
+    chroma        → Chroma 向量数据库（嵌入式 DB，官方集成 llama-index-vector-stores-chroma）
+    pgvector      → PostgreSQL + pgvector 扩展（服务端生产形态，PG_CONN 指定连接串）
+    其他生产 → Qdrant / Milvus（同接口，见 docs/06）
 """
 import sys
 from pathlib import Path
@@ -45,7 +47,8 @@ CHUNK_SIZE = 512     # 注意：LlamaIndex 单位是 token（原生版是字符�
 CHUNK_OVERLAP = 64
 STRATEGIES = ("recursive", "markdown", "sentence")
 RETRIEVAL_MODE = os.getenv("RETRIEVAL_MODE", "hybrid").lower()   # hybrid | vector
-VECTOR_STORE = os.getenv("VECTOR_STORE", "simple").lower()       # simple | faiss
+VECTOR_STORE = os.getenv("VECTOR_STORE", "simple").lower()       # simple | faiss | chroma | pgvector
+PG_CONN = os.getenv("PG_CONN", "postgresql+psycopg2://rag:rag@localhost:5432/rag")
 
 # ① LLM 全局配置（对应原生版 rag/llm.py）。Embedding 延迟到 ensure_settings()，
 #    便于离线测试时用 MockEmbedding 注入。
@@ -119,7 +122,36 @@ def _faiss_backend(dim: int):
     return LIFaiss(faiss_index=faiss.IndexFlatIP(dim))
 
 
-def _load_index(cache_dir: Path):
+def _chroma_backend(cache_dir: Path):
+    """Chroma 嵌入式向量数据库（无需起服务，数据在 cache_dir 目录）。"""
+    try:
+        import chromadb
+        from llama_index.vector_stores.chroma import ChromaVectorStore
+    except ImportError as e:
+        raise ImportError(
+            "VECTOR_STORE=chroma 需要: pip install chromadb llama-index-vector-stores-chroma"
+        ) from e
+    client = chromadb.PersistentClient(path=str(cache_dir))
+    collection = client.get_or_create_collection("docs")
+    return ChromaVectorStore(chroma_collection=collection)
+
+
+def _pg_backend(strategy: str):
+    """PostgreSQL + pgvector（服务端向量数据库，连接串来自 PG_CONN）。"""
+    try:
+        from llama_index.vector_stores.postgres import PGVectorStore
+    except ImportError as e:
+        raise ImportError(
+            "VECTOR_STORE=pgvector 需要: pip install llama-index-vector-stores-postgres psycopg2-binary"
+        ) from e
+    dim = len(Settings.embed_model.get_text_embedding("probe"))
+    # PGVectorStore 初始化会同时建 sync/async 引擎 → 两条连接串都要给
+    return PGVectorStore(connection_string=PG_CONN,
+                          async_connection_string=PG_CONN.replace("+psycopg2", "+asyncpg"),
+                          table_name=f"rag_{strategy}", embed_dim=dim)
+
+
+def _load_index(cache_dir: Path, strategy: str):
     if VECTOR_STORE == "faiss":
         import faiss
         from llama_index.vector_stores.faiss import FaissVectorStore as LIFaiss
@@ -130,21 +162,33 @@ def _load_index(cache_dir: Path):
         sc = StorageContext.from_defaults(vector_store=vec_store,
                                           persist_dir=str(cache_dir / "store"))
         return load_index_from_storage(sc)
+    if VECTOR_STORE == "chroma":
+        # Chroma 自带持久化，node 元数据存在 collection 里 → 直接 from_vector_store 重建
+        return VectorStoreIndex.from_vector_store(_chroma_backend(cache_dir))
+    if VECTOR_STORE == "pgvector":
+        # 表在服务端，缓存标记用本地 .built 文件；直接从向量表重建索引对象
+        return VectorStoreIndex.from_vector_store(_pg_backend(strategy))
     if VECTOR_STORE == "simple":
         from llama_index.core import StorageContext, load_index_from_storage
 
         return load_index_from_storage(
             StorageContext.from_defaults(persist_dir=str(cache_dir / "store")))
-    raise ValueError(f"未知向量库: {VECTOR_STORE}，可选 simple | faiss"
-                     "（sqlite 属于原生版/pgvector 生态，LlamaIndex 请用 pgvector）")
+    raise ValueError(f"未知向量库: {VECTOR_STORE}，可选 simple | faiss | chroma | pgvector")
 
 
 def build_or_load_index(strategy: str) -> VectorStoreIndex:
     """离线建库 → 按（策略 × 向量库）分别缓存；已存在则直接加载。"""
     cache_dir = CACHE_ROOT / strategy / VECTOR_STORE
-    if (cache_dir / "store").exists():
+    if VECTOR_STORE == "chroma":
+        cached = (cache_dir / "chroma.sqlite3").exists()
+    elif VECTOR_STORE == "pgvector":
+        # 向量表在服务端 PG 里，本地只留 .built 标记（删表重建时记得同时删它）
+        cached = (cache_dir / ".built").exists()
+    else:
+        cached = (cache_dir / "store").exists()
+    if cached:
         print(f"加载已有索引: {cache_dir}（store={VECTOR_STORE}）")
-        return _load_index(cache_dir)
+        return _load_index(cache_dir, strategy)
 
     # 加载 + 分块 + 向量化一步完成；显式传入策略对应的 parser
     parser = build_parser(strategy)
@@ -160,10 +204,25 @@ def build_or_load_index(strategy: str) -> VectorStoreIndex:
         index = VectorStoreIndex.from_documents(
             docs, transformations=[parser],
             storage_context=StorageContext_from(backend), show_progress=True)
+    elif VECTOR_STORE == "chroma":
+        index = VectorStoreIndex.from_documents(
+            docs, transformations=[parser],
+            storage_context=StorageContext_from(_chroma_backend(cache_dir)),
+            show_progress=True)
+    elif VECTOR_STORE == "pgvector":
+        backend = _pg_backend(strategy)
+        backend.clear()  # 缓存标记缺失 → 先清空同名表，避免重复写入
+        index = VectorStoreIndex.from_documents(
+            docs, transformations=[parser],
+            storage_context=StorageContext_from(backend), show_progress=True)
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        (cache_dir / ".built").touch()
     else:
-        return _load_index(cache_dir)  # 触发 ValueError
+        return _load_index(cache_dir, strategy)  # 触发 ValueError
 
-    index.storage_context.persist(persist_dir=str(cache_dir / "store"))
+    if VECTOR_STORE not in ("chroma", "pgvector"):
+        # Chroma/pgvector：数据分别在本地引擎文件与服务端表里，无需落 docstore
+        index.storage_context.persist(persist_dir=str(cache_dir / "store"))
     if VECTOR_STORE == "faiss":
         # FAISS 向量文件与 docstore 文本分开持久化（load 时两者都要读）
         index.vector_store.persist(str(cache_dir / "faiss.idx"))

@@ -105,6 +105,6 @@ async def chat(q: str):
 
 1. **最小 Web 版**：给 `query_stream()` 套 FastAPI SSE + 一个单页 HTML 聊天界面
 2. **混合调优**：给 RRF 加通道权重（向量/BM25 不对等），或换 jieba 分词对比 BM25 效果
-3. **换库练习**：把 `SqliteVectorStore` 的 SQL 换成 pgvector，验证接口不变
+3. **换库练习**：框架版已内置 `VECTOR_STORE=pgvector`（04/05，连接串 `PG_CONN`）；原生版把 `SqliteVectorStore` 的 SQL 换成 pgvector，验证接口不变
 4. **评估脚本**：写 `scripts/04_eval.py`，对黄金集计算 Hit Rate@k
 5. **查询改写**：在 `retrieve()` 前加一步 LLM 改写，对比效果差异

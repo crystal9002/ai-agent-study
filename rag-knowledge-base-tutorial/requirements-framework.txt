@@ -8,9 +8,16 @@ llama-index-llms-openai-like>=0.3.0
 llama-index-postprocessor-sbert-rerank>=0.3.0
 llama-index-vector-stores-faiss>=0.2.0   # VECTOR_STORE=faiss 时需要（含 faiss-cpu）
 faiss-cpu>=1.8.0
+chromadb>=0.5.0                          # VECTOR_STORE=chroma（嵌入式向量数据库）
+llama-index-vector-stores-chroma>=0.3.0   #   LlamaIndex 侧官方集成
+llama-index-vector-stores-postgres>=0.9.0 # 04 的 VECTOR_STORE=pgvector（服务端 PG + pgvector 扩展）
+psycopg2-binary>=2.9.0                    #   sync 连接（04/05 共用）
+asyncpg>=0.29.0                           #   04 的 PGVectorStore 还要建 async 引擎
 
 # ===== LangChain（通用 LLM 应用框架）=====
 langchain>=0.3.0
 langchain-community>=0.3.0
 langchain-openai>=0.2.0
 langchain-huggingface>=0.1.0
+langchain-chroma>=0.1.0                   # 05 的 VECTOR_STORE=chroma（正式包，替代已废弃的 community.Chroma）
+langchain-postgres>=0.0.19                # 05 的 VECTOR_STORE=pgvector

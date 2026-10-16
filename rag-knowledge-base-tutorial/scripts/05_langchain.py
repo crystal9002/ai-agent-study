@@ -4,15 +4,21 @@
 混合召回（RETRIEVAL_MODE=hybrid，默认）：向量 + BM25 → RRF 融合，
 BM25 与融合逻辑直接复用原生版 rag/retriever.py —— 框架间组件可互相借用。
 
-向量库（VECTOR_STORE，与原生版同名同取值）：
+向量库（VECTOR_STORE，与原生版同名，取值为 LangChain 生态）：
     faiss（默认）→ langchain FAISS
     sqlite       → 自定义 SQLiteVectorStore（LangChain VectorStore 接口适配，
                    内部复用原生 rag/vector_store.py::SqliteVectorStore）
+    chroma       → Chroma 向量数据库（嵌入式 DB，langchain-chroma 官方集成）
+    pgvector     → PostgreSQL + pgvector 扩展（服务端生产形态，langchain-postgres，
+                   PG_CONN 指定连接串）
 
 用法：
     python scripts/05_langchain.py "团队版多少钱，几个人可以用？"
     python scripts/05_langchain.py --strategy markdown "你的问题"
     VECTOR_STORE=sqlite python scripts/05_langchain.py "你的问题"
+    VECTOR_STORE=chroma python scripts/05_langchain.py "你的问题"
+    VECTOR_STORE=pgvector PG_CONN=postgresql+psycopg2://user:pass@host:5432/db \
+        python scripts/05_langchain.py "你的问题"
 """
 import sys
 from pathlib import Path
@@ -44,7 +50,8 @@ CHUNK_SIZE = 512
 CHUNK_OVERLAP = 64
 STRATEGIES = ("recursive", "markdown", "sentence")
 RETRIEVAL_MODE = os.getenv("RETRIEVAL_MODE", "hybrid").lower()   # hybrid | vector
-VECTOR_STORE = os.getenv("VECTOR_STORE", "faiss").lower()        # faiss | sqlite
+VECTOR_STORE = os.getenv("VECTOR_STORE", "faiss").lower()        # faiss | sqlite | chroma | pgvector
+PG_CONN = os.getenv("PG_CONN", "postgresql+psycopg2://rag:rag@localhost:5432/rag")
 
 SYSTEM_PROMPT = """你是一个基于知识库的问答助手。规则：
 1. 只根据【知识库资料】回答，不要编造资料中不存在的内容。
@@ -135,7 +142,7 @@ def build_splitter(strategy: str):
 
 
 def build_or_load_store(strategy: str):
-    """加载 → 分块 → 向量化 → 向量库（VECTOR_STORE=faiss|sqlite，缓存按策略×后端隔离）。"""
+    """加载 → 分块 → 向量化 → 向量库（VECTOR_STORE=faiss|sqlite|chroma|pgvector，缓存按策略×后端隔离）。"""
     cache_dir = CACHE_ROOT / strategy / VECTOR_STORE
     embeddings = get_embeddings()
 
@@ -162,7 +169,42 @@ def build_or_load_store(strategy: str):
               f"{len(chunks)} 个 chunk）")
         return store
 
-    raise ValueError(f"未知向量库: {VECTOR_STORE}，可选 faiss | sqlite")
+    if VECTOR_STORE == "chroma":
+        # 嵌入式向量数据库：写入即落盘到 cache_dir，collection 内自带 doc 元数据
+        from langchain_chroma import Chroma
+
+        if (cache_dir / "chroma.sqlite3").exists():
+            print(f"加载已有索引: {cache_dir}（store=chroma）")
+            return Chroma(persist_directory=str(cache_dir),
+                          embedding_function=embeddings, collection_name="docs")
+        chunks = load_all_documents(strategy)
+        store = Chroma.from_documents(chunks, embeddings,
+                                      persist_directory=str(cache_dir),
+                                      collection_name="docs")
+        print(f"索引已构建并缓存: {cache_dir}（strategy={strategy}, store=chroma, "
+              f"{len(chunks)} 个 chunk）")
+        return store
+
+    if VECTOR_STORE == "pgvector":
+        # 服务端向量数据库：表/集合在 PG 里，本地缓存目录只放 .built 标记
+        from langchain_postgres import PGVector
+
+        if (cache_dir / ".built").exists():
+            print(f"加载已有索引: {cache_dir}（store=pgvector）")
+            return PGVector(embeddings, connection=PG_CONN,
+                            collection_name=f"rag_{strategy}", use_jsonb=True)
+        chunks = load_all_documents(strategy)
+        # pre_delete_collection=True：重建前清空同名集合，避免重复写入
+        store = PGVector.from_documents(chunks, embeddings, connection=PG_CONN,
+                                        collection_name=f"rag_{strategy}",
+                                        pre_delete_collection=True, use_jsonb=True)
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        (cache_dir / ".built").touch()
+        print(f"索引已构建并缓存: {cache_dir}（strategy={strategy}, store=pgvector, "
+              f"{len(chunks)} 个 chunk）")
+        return store
+
+    raise ValueError(f"未知向量库: {VECTOR_STORE}，可选 faiss | sqlite | chroma | pgvector")
 
 
 def load_all_documents(strategy: str) -> list:
@@ -185,14 +227,14 @@ def _as_chunk(d: Document) -> Chunk:
     )
 
 
-def retrieve(store: FAISS, question: str, strategy: str, top_k: int = 20) -> list:
+def retrieve(store: LCVectorStore, question: str, strategy: str, top_k: int = 20) -> list:
     """召回：vector=纯向量；hybrid=向量+BM25 → RRF（复用 rag/retriever.py）。"""
     if RETRIEVAL_MODE == "vector":
         return [d for d, _ in store.similarity_search_with_score(question, k=top_k)]
     if RETRIEVAL_MODE != "hybrid":
         raise ValueError(f"未知召回模式: {RETRIEVAL_MODE}，可选 hybrid | vector")
 
-    # FAISS 默认返回 L2 距离（越小越近）→ 转成"越大越近"的相似度参与展示，RRF 只用排名
+    # FAISS/Chroma 均返回 L2 距离（越小越近）→ 转成"越大越近"参与展示，RRF 只用排名
     vec_hits = [(_as_chunk(d), 1.0 / (1.0 + dist))
                 for d, dist in store.similarity_search_with_score(question, k=top_k)]
 
