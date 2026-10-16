@@ -1,0 +1,10 @@
+# 本地推理
+sentence-transformers>=2.7.0
+faiss-cpu>=1.8.0
+
+# LLM / Embedding API（OpenAI 兼容）
+openai>=1.30.0
+
+# 配置
+python-dotenv>=1.0.0
+numpy>=1.26.0

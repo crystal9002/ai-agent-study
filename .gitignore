@@ -1,0 +1,17 @@
+# 密钥
+.env
+
+# 索引与生成产物
+index/
+index_llamaindex/
+index_langchain/
+output/
+*.faiss
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# IDE
+.idea/

@@ -1,0 +1,16 @@
+# 框架写法（在原生教程之上追加安装）
+# pip install -r requirements.txt -r requirements-framework.txt
+
+# ===== LlamaIndex（生产 RAG 首选框架）=====
+llama-index>=2.0.0
+llama-index-embeddings-huggingface>=0.3.0
+llama-index-llms-openai-like>=0.3.0
+llama-index-postprocessor-sbert-rerank>=0.3.0
+llama-index-vector-stores-faiss>=0.2.0   # VECTOR_STORE=faiss 时需要（含 faiss-cpu）
+faiss-cpu>=1.8.0
+
+# ===== LangChain（通用 LLM 应用框架）=====
+langchain>=0.3.0
+langchain-community>=0.3.0
+langchain-openai>=0.2.0
+langchain-huggingface>=0.1.0
