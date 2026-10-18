@@ -38,7 +38,15 @@ python scripts/01_task_agent.py "下周三去深圳见客户，往返两天，�
 
 输出过程：📋 任务计划 → ▶ 逐步执行（带 🔧 工具调用明细）→ 📄 最终方案，并保存到 `output/itinerary.md`。
 
-### 3. 运行 LangGraph 版（对照）
+### 3. Web 界面（实时进度）
+
+```bash
+python scripts/03_web.py        # 打开 http://127.0.0.1:8001
+```
+
+浏览器里看 Agent 全过程：📋 计划步骤清单实时更新状态 → 🔧 每次工具调用的参数/返回实时滚动 → 📝 最终方案 Markdown 渲染。同步阻塞的 `Agent.run()` 通过 on_event 回调 + 队列接到 SSE（`scripts/03_web.py` 注释里讲了这个模式）。
+
+### 4. 运行 LangGraph 版（对照）
 
 ```bash
 pip install -r requirements-framework.txt
@@ -57,11 +65,13 @@ agent-tutorial/
 │   ├── llm.py                   # OpenAI 兼容 Function Calling 封装
 │   ├── planner.py               # 目标 → 结构化 Plan（JSON 解析）
 │   ├── executor.py              # 单步 ReAct 循环（tool_calls 回填 + max_iters）
-│   └── task_agent.py            # 编排：规划 → 逐步执行 → 汇总
+│   └── task_agent.py            # 编排：规划 → 逐步执行 → 汇总（支持 on_event 进度回调）
 ├── scripts/
 │   ├── 01_task_agent.py         # 原生版入口
 │   ├── 02_langgraph.py          # LangGraph 版（@tool + StateGraph + create_react_agent）
+│   ├── 03_web.py                # Web 界面（FastAPI + SSE 实时进度推送）
 │   └── output/                  # 生成的行程方案
+├── web/                         # 单页前端（原生 HTML/JS，无构建步骤）
 ├── docs/                        # 5 篇教程（按学习路径阅读）
 ```
 

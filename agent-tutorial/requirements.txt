@@ -1,3 +1,7 @@
 # 原生版 Agent 依赖（很轻：只需要 LLM 客户端）
 openai>=1.30.0
 python-dotenv>=1.0.0
+
+# Web 界面（scripts/03_web.py）
+fastapi>=0.110.0
+uvicorn>=0.29.0

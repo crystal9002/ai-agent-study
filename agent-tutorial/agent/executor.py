@@ -7,9 +7,13 @@
 from __future__ import annotations
 
 import json
+from typing import Callable
 
 from .llm import LLM
 from .tools import ToolRegistry
+
+# on_event 回调：Web 界面实时进度推送用（CLI 传 None，行为与原来完全一致）
+EventCB = Callable[[dict], None] | None
 
 STEP_SYSTEM = """你是一个任务执行助手，负责完成任务规划中的【当前步骤】。
 
@@ -45,8 +49,12 @@ def run_step(
     step_goal: str,
     history: list[str],
     max_iters: int = 6,
+    on_event: EventCB = None,
 ) -> str:
-    """执行一个规划步骤，返回该步骤的结论文本。"""
+    """执行一个规划步骤，返回该步骤的结论文本。
+
+    on_event：可选回调，收到 tool_call / tool_result 事件（Web 界面用）。
+    """
     history_text = "\n".join(f"- { _truncate(h) }" for h in history) or "（暂无）"
     messages: list[dict] = [
         {"role": "system", "content": STEP_SYSTEM},
@@ -63,7 +71,13 @@ def run_step(
 
         # ① Act：执行工具 ② Observe：结果作为 tool 角色回填，进入下一轮思考
         for tc in msg.tool_calls:
+            if on_event:
+                on_event({"type": "tool_call", "step_id": step_id,
+                          "name": tc.function.name, "args": tc.function.arguments})
             result = registry.invoke(tc.function.name, tc.function.arguments)
+            if on_event:
+                on_event({"type": "tool_result", "step_id": step_id,
+                          "name": tc.function.name, "result": result})
             print(f"    🔧 {tc.function.name}({tc.function.arguments[:80]}) → "
                   f"{_truncate(json.dumps(result, ensure_ascii=False), 120)}")
             messages.append({

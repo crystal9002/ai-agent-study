@@ -58,6 +58,14 @@ python scripts/05_langchain.py "团队版多少钱，几个人可以用？"    #
 python scripts/04_llamaindex.py --strategy markdown "团队版多少钱？"
 ```
 
+### 5. Web 界面（浏览器问答）
+
+```bash
+python scripts/06_web.py        # 打开 http://127.0.0.1:8000
+```
+
+把 03_chat 的流式聊天搬到浏览器：SSE 逐字输出 + 引用来源卡片 + 当前配置徽标（分块/召回/向量库），前端是单文件原生 HTML/JS（`web/index.html`），讲的就是生产网关最常用的流式方案。
+
 ## 项目结构
 
 ```
@@ -80,7 +88,9 @@ rag-knowledge-base-tutorial/
 │   ├── 02_query.py           # 单次问答（打印检索结果+回答）
 │   ├── 03_chat.py            # 交互式聊天
 │   ├── 04_llamaindex.py      # 框架写法①：LlamaIndex
-│   └── 05_langchain.py       # 框架写法②：LangChain
+│   ├── 05_langchain.py       # 框架写法②：LangChain
+│   └── 06_web.py             # Web 界面（FastAPI + SSE 流式问答）
+├── web/                      # 单页前端（原生 HTML/JS，无构建步骤）
 ├── docs/                     # 教程文档（按上方顺序阅读）
 └── index/                    # 生成的索引（01 脚本产出）
 ```

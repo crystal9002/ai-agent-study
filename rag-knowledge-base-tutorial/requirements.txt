@@ -8,3 +8,7 @@ openai>=1.30.0
 # 配置
 python-dotenv>=1.0.0
 numpy>=1.26.0
+
+# Web 界面（scripts/06_web.py）
+fastapi>=0.110.0
+uvicorn>=0.29.0

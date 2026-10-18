@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>任务规划 Agent · Agent Tutorial</title>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #171a21; --panel2: #1e222c; --border: #2a2f3a;
+    --text: #e6e9ef; --muted: #9aa3b2; --accent: #7c5cff; --accent2: #35c28d;
+    --warn: #ffb454; --danger: #ff6b6b; --user: #3d2f8f;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text); font: 15px/1.6 -apple-system,
+    "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif; height: 100vh;
+    display: flex; flex-direction: column;
+  }
+  header {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 13px 22px; border-bottom: 1px solid var(--border); background: var(--panel);
+  }
+  header h1 { font-size: 17px; font-weight: 600; }
+  .pills { display: flex; gap: 7px; flex-wrap: wrap; }
+  .pill { font-size: 12px; color: var(--muted); background: var(--panel2);
+    border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px; }
+  .pill b { color: var(--accent2); font-weight: 600; }
+  .layout { flex: 1; display: grid; grid-template-columns: 340px 1fr; overflow: hidden; }
+  aside {
+    border-right: 1px solid var(--border); background: var(--panel);
+    overflow-y: auto; padding: 18px 16px;
+  }
+  aside h3 { font-size: 13px; color: var(--muted); text-transform: uppercase;
+    letter-spacing: .08em; margin: 16px 0 9px; }
+  aside h3:first-child { margin-top: 0; }
+  .goalbox textarea {
+    width: 100%; resize: vertical; min-height: 84px; background: var(--panel2);
+    color: var(--text); border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 12px; font: inherit; line-height: 1.5; outline: none;
+  }
+  .goalbox textarea:focus { border-color: var(--accent); }
+  .goalbox .row { display: flex; gap: 8px; margin-top: 9px; }
+  button { cursor: pointer; border: none; border-radius: 9px; font-weight: 600;
+    font-size: 14px; transition: .15s; }
+  #run { flex: 1; background: var(--accent); color: #fff; height: 40px; }
+  #run:hover { filter: brightness(1.12); }
+  #run:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
+  #stop { display: none; background: var(--panel2); color: var(--danger);
+    border: 1px solid var(--danger); height: 40px; padding: 0 14px; }
+  .chip { cursor: pointer; background: var(--panel2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px;
+    font-size: 12.5px; margin: 0 6px 8px 0; display: inline-block; transition: .15s; }
+  .chip:hover { border-color: var(--accent); color: var(--accent); }
+  #plan .step {
+    display: flex; gap: 9px; padding: 9px 10px; border: 1px solid var(--border);
+    background: var(--panel2); border-radius: 9px; margin-bottom: 7px; font-size: 13.5px;
+  }
+  #plan .st { flex: none; width: 20px; height: 20px; border-radius: 50%;
+    display: grid; place-items: center; font-size: 11px; font-weight: 700;
+    background: var(--border); color: var(--muted); margin-top: 2px; }
+  #plan .step.running .st { background: var(--warn); color: #000; animation: pulse 1s infinite; }
+  #plan .step.done .st { background: var(--accent2); color: #000; }
+  @keyframes pulse { 50% { opacity: .55; } }
+  #plan .tools { color: var(--muted); font-size: 11.5px; margin-top: 3px; }
+  .toolbar .t { font-size: 12.5px; padding: 7px 9px; background: var(--panel2);
+    border: 1px solid var(--border); border-radius: 8px; margin-bottom: 6px; }
+  .toolbar .t b { color: var(--accent); font-family: ui-monospace, monospace; }
+  .toolbar .t i { display: block; color: var(--muted); font-style: normal;
+    font-size: 11.5px; margin-top: 2px; }
+  main { overflow-y: auto; padding: 22px 26px; }
+  .placeholder { color: var(--muted); text-align: center; margin-top: 14vh; }
+  .placeholder h2 { color: var(--text); font-size: 20px; margin-bottom: 6px; }
+  .ev { border-left: 2px solid var(--border); padding: 4px 0 14px 16px;
+    margin-left: 8px; position: relative; }
+  .ev::before { content: ""; position: absolute; left: -6px; top: 8px;
+    width: 10px; height: 10px; border-radius: 50%; background: var(--border); }
+  .ev.call::before { background: var(--accent); }
+  .ev.result::before { background: var(--accent2); }
+  .ev.step::before { background: var(--warn); }
+  .ev .meta { font-size: 12.5px; color: var(--muted); margin-bottom: 4px; }
+  .ev .meta b { color: var(--text); }
+  .ev .code { background: var(--panel2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 11px; font: 12.5px/1.55 ui-monospace,
+    Menlo, monospace; white-space: pre-wrap; word-break: break-all; color: #c9d3e5;
+    max-height: 150px; overflow: auto; }
+  .ev .concl { background: #14261e; border: 1px solid #245c44; color: #bfe8d5;
+    border-radius: 9px; padding: 9px 12px; font-size: 13.5px; white-space: pre-wrap; }
+  #final { background: var(--panel); border: 1px solid var(--accent);
+    border-radius: 13px; padding: 18px 22px; margin-top: 6px; }
+  #final h2, #final h3 { margin: 13px 0 7px; line-height: 1.35; }
+  #final h2 { font-size: 18px; color: var(--accent); }
+  #final h3 { font-size: 15.5px; color: var(--accent2); }
+  #final p { margin: 7px 0; } #final ul, #final ol { margin: 7px 0 7px 22px; }
+  #final li { margin: 3px 0; }
+  #final code { background: var(--panel2); padding: 1.5px 6px; border-radius: 5px;
+    font: 13px ui-monospace, monospace; color: #ffd9a0; }
+  #final table { border-collapse: collapse; margin: 9px 0; width: 100%; font-size: 13.5px; }
+  #final td, #final th { border: 1px solid var(--border); padding: 6px 9px; text-align: left; }
+  #final th { background: var(--panel2); color: var(--accent); }
+  .err { background: #3a1d22; border: 1px solid #7a2e35; color: #ffb4b4;
+    border-radius: 10px; padding: 10px 14px; font-size: 13.5px; margin-top: 12px; }
+  .badge { display: inline-block; background: var(--accent); color: #fff; font-size: 11.5px;
+    font-weight: 700; border-radius: 6px; padding: 1px 7px; margin-right: 7px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🤖 任务规划 Agent</h1>
+  <div class="pills" id="toolsPill"><span class="pill">加载工具列表…</span></div>
+</header>
+
+<div class="layout">
+  <aside>
+    <h3>任务目标</h3>
+    <div class="goalbox">
+      <textarea id="goal" placeholder="例如：下周二到周四去上海出差，帮我安排行程"></textarea>
+      <div class="row"><button id="run">运行 Agent</button><button id="stop">停止</button></div>
+    </div>
+    <div style="margin-top:10px">
+      <span class="chip">下周二到周四去上海出差，帮我安排行程</span>
+      <span class="chip">3 月 8 日从北京去深圳出差两天，安排一下</span>
+    </div>
+
+    <h3>执行计划</h3>
+    <div id="plan"><div style="color:var(--muted);font-size:13px">运行后显示…</div></div>
+
+    <h3>可用工具</h3>
+    <div class="toolbar" id="toolbar"></div>
+  </aside>
+
+  <main id="main">
+    <div class="placeholder">
+      <h2>Plan → Act → Observe → Summarize</h2>
+      <p>输入目标后，Agent 会先出计划，再逐步调用工具，全程实时可见。</p>
+    </div>
+  </main>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+let running = false, controller = null, planSteps = [];
+
+async function loadConfig() {
+  try {
+    const c = await (await fetch('/api/config')).json();
+    $('#toolsPill').innerHTML =
+      `<span class="pill">模型 <b>${c.model}</b></span>` +
+      c.tools.map(t => `<span class="pill">${t.name}</span>`).join('');
+    $('#toolbar').innerHTML = c.tools.map(t =>
+      `<div class="t"><b>${t.name}</b><i>${t.description.split('\n')[0]}</i></div>`).join('');
+  } catch (e) { $('#toolsPill').innerHTML = '<span class="pill">配置加载失败</span>'; }
+}
+loadConfig();
+
+const esc = t => t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const trunc = (t, n=140) => t.length > n ? t.slice(0, n) + '…' : t;
+
+// Markdown 轻量渲染（先转义再加标签，避免 XSS）
+function md(src) {
+  const lines = esc(src).split('\n');
+  let html = '', inUl = false, inOl = false, inTbl = false;
+  const close = () => {
+    if (inUl) { html += '</ul>'; inUl = false; }
+    if (inOl) { html += '</ol>'; inOl = false; }
+    if (inTbl) { html += '</table>'; inTbl = false; }
+  };
+  const inline = s => s
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\[(\d+)\]/g, '<span class="badge">$1</span>');
+  for (const raw of lines) {
+    const l = raw.trimEnd();
+    if (/^\s*$/.test(l)) { close(); continue; }
+    if (/^###?\s+/.test(l)) { close(); const n = l.match(/^#+/).length;
+      html += `<h${n - 1}>${inline(l.replace(/^#+\s+/, ''))}</h${n - 1}>`; continue; }
+    if (/^\|.*\|/.test(l)) {
+      if (/^\|[\s\-:|]+\|$/.test(l)) continue;             // 表格分隔行
+      if (!inTbl) { close(); html += '<table>'; inTbl = true; }
+      const cells = l.split('|').slice(1, -1).map(c => inline(c.trim()));
+      const tag = cells.every(c => /^<strong>|^$/.test(c)) && cells.length ? 'th' : 'td';
+      html += `<tr>${cells.map(c => `<${tag}>${c}</${tag}>`).join('')}</tr>`;
+      continue;
+    }
+    if (/^[-*]\s+/.test(l)) { if (!inUl) { close(); html += '<ul>'; inUl = true; }
+      html += `<li>${inline(l.replace(/^[-*]\s+/, ''))}</li>`; continue; }
+    if (/^\d+\.\s+/.test(l)) { if (!inOl) { close(); html += '<ol>'; inOl = true; }
+      html += `<li>${inline(l.replace(/^\d+\.\s+/, ''))}</li>`; continue; }
+    close(); html += `<p>${inline(l)}</p>`;
+  }
+  close();
+  return html;
+}
+
+function clearMain() {
+  $('#main').innerHTML = '<div id="log"></div><div id="final"></div>';
+}
+const log = html => {
+  const el = document.createElement('div');
+  el.innerHTML = html;
+  $('#log').appendChild(el);
+  $('#main').scrollTo({top: $('#main').scrollHeight, behavior: 'smooth'});
+};
+
+function renderPlan(steps) {
+  planSteps = steps;
+  $('#plan').innerHTML = steps.map(s => `
+    <div class="step" id="ps${s.id}"><div class="st">${s.id}</div>
+      <div><div>${esc(s.goal)}</div>
+      ${s.tools.length ? `<div class="tools">候选工具：${s.tools.join(', ')}</div>` : ''}
+      </div></div>`).join('');
+}
+const setStep = (id, cls) => {
+  const el = $('#ps' + id); if (!el) return;
+  el.className = 'step ' + cls;
+  if (cls === 'done') el.querySelector('.st').textContent = '✓';
+};
+
+function handle(ev) {
+  switch (ev.type) {
+    case 'plan':
+      clearMain(); renderPlan(ev.steps);
+      log(`<div class="ev step"><div class="meta">📋 规划完成，共 <b>${ev.steps.length}</b> 步</div></div>`);
+      break;
+    case 'step_start':
+      planSteps.forEach(s => setStep(s.id, s.id === ev.step_id ? 'running' : ''));
+      setStep(ev.step_id, 'running');
+      log(`<div class="ev step"><div class="meta">▶ 第 <b>${ev.step_id}</b> 步：${esc(ev.goal)}</div></div>`);
+      break;
+    case 'tool_call': {
+      let args = ev.args;
+      try { args = JSON.stringify(JSON.parse(ev.args), null, 2); } catch {}
+      log(`<div class="ev call"><div class="meta">第 ${ev.step_id} 步 · 🔧 调用 <b>${esc(ev.name)}</b></div>
+        <div class="code">${esc(args)}</div></div>`);
+      break; }
+    case 'tool_result': {
+      const r = typeof ev.result === 'string' ? ev.result : JSON.stringify(ev.result, null, 2);
+      log(`<div class="ev result"><div class="meta">↩ 结果 <b>${esc(ev.name)}</b></div>
+        <div class="code">${esc(trunc(r, 500))}</div></div>`);
+      break; }
+    case 'step_end':
+      setStep(ev.step_id, 'done');
+      log(`<div class="ev"><div class="concl">✅ 第 ${ev.step_id} 步结论：${esc(trunc(ev.conclusion, 300))}</div></div>`);
+      break;
+    case 'final':
+      planSteps.forEach(s => setStep(s.id, 'done'));
+      $('#final').innerHTML = `<div style="color:var(--accent);font-weight:700;margin-bottom:6px">📝 最终方案</div>` + md(ev.content);
+      $('#main').scrollTo({top: $('#main').scrollHeight, behavior: 'smooth'});
+      break;
+    case 'error':
+      log(`<div class="err">出错了：${esc(ev.message)}</div>`);
+      break;
+  }
+}
+
+async function run() {
+  const goal = $('#goal').value.trim();
+  if (!goal || running) return;
+  running = true; $('#run').disabled = true; $('#stop').style.display = 'block';
+  controller = new AbortController();
+  clearMain(); $('#plan').innerHTML = '<div style="color:var(--muted);font-size:13px">规划中…</div>';
+  try {
+    const resp = await fetch('/api/run?goal=' + encodeURIComponent(goal),
+                             {signal: controller.signal});
+    const reader = resp.body.getReader(), dec = new TextDecoder();
+    let buf = '';
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, {stream: true});
+      const frames = buf.split('\n\n'); buf = frames.pop();
+      for (const f of frames) {
+        const ev = /event: (.*)/.exec(f), dt = /data: (.*)/.exec(f);
+        if (ev && dt) handle(JSON.parse(dt[1]));
+      }
+    }
+  } catch (e) {
+    if (e.name !== 'AbortError') log(`<div class="err">连接中断：${esc(e.message)}</div>`);
+  } finally {
+    running = false; controller = null;
+    $('#run').disabled = false; $('#stop').style.display = 'none';
+  }
+}
+
+$('#run').onclick = run;
+$('#stop').onclick = () => controller?.abort();
+$('#goal').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); run(); }
+});
+document.querySelectorAll('.chip').forEach(c =>
+  c.addEventListener('click', () => { $('#goal').value = c.textContent.trim(); run(); }));
+</script>
+</body>
+</html>

@@ -11,7 +11,7 @@
 """
 from __future__ import annotations
 
-from .executor import run_step
+from .executor import EventCB, run_step
 from .llm import LLM
 from .planner import Plan, create_plan
 from .tools import ToolRegistry, register_default_tools
@@ -36,6 +36,10 @@ SUMMARY_TEMPLATE = """【任务目标】
 
 
 class TaskAgent:
+    """编排器。on_event 回调可选：Web 界面靠它实时推送进度事件
+    （plan / step_start / tool_call / tool_result / step_end / final），
+    CLI 调用不传则行为与原来完全一致。"""
+
     def __init__(self, max_iters_per_step: int = 6, verbose: bool = True):
         self.llm = LLM()
         self.registry: ToolRegistry = register_default_tools()
@@ -46,22 +50,35 @@ class TaskAgent:
         if self.verbose:
             print(*args)
 
-    def plan(self, goal: str) -> Plan:
+    @staticmethod
+    def _emit(on_event: EventCB, event: dict) -> None:
+        if on_event:
+            on_event(event)
+
+    def plan(self, goal: str, on_event: EventCB = None) -> Plan:
         plan = create_plan(self.llm, goal)
+        self._emit(on_event, {"type": "plan", "goal": goal,
+                              "steps": [{"id": s.id, "goal": s.goal, "tools": s.tools}
+                                        for s in plan.steps]})
         self._log("\n📋 任务计划：")
         self._log(plan.render())
         return plan
 
-    def execute(self, plan: Plan) -> list[str]:
+    def execute(self, plan: Plan, on_event: EventCB = None) -> list[str]:
         results: list[str] = []
         for step in plan.steps:
+            self._emit(on_event, {"type": "step_start", "step_id": step.id,
+                                  "goal": step.goal})
             self._log(f"\n▶ 执行第 {step.id} 步：{step.goal}")
             result = run_step(
                 self.llm, self.registry,
                 goal=plan.goal, step_id=step.id, step_goal=step.goal,
                 history=results, max_iters=self.max_iters_per_step,
+                on_event=on_event,
             )
             results.append(result)
+            self._emit(on_event, {"type": "step_end", "step_id": step.id,
+                                  "conclusion": result})
             self._log(f"  ✅ 结论：{result[:120]}{'…' if len(result) > 120 else ''}")
         return results
 
@@ -77,7 +94,10 @@ class TaskAgent:
         ])
         return (msg.content or "").strip()
 
-    def run(self, goal: str) -> str:
-        plan = self.plan(goal)
-        results = self.execute(plan)
-        return self.summarize(plan, results)
+    def run(self, goal: str, on_event: EventCB = None) -> str:
+        """端到端执行；on_event 收到进度事件（Web 界面用）。"""
+        plan = self.plan(goal, on_event=on_event)
+        results = self.execute(plan, on_event=on_event)
+        answer = self.summarize(plan, results)
+        self._emit(on_event, {"type": "final", "content": answer})
+        return answer

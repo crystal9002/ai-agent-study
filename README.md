@@ -29,6 +29,7 @@ cd rag-knowledge-base-tutorial
 pip install -r requirements.txt && cp .env.example .env  # 填 API Key
 python scripts/01_build_index.py                          # 建库
 python scripts/02_query.py "团队版多少钱，几个人可以用？"   # 问答
+python scripts/06_web.py                                  # Web 界面 → http://127.0.0.1:8000
 ```
 
 ### 2. [任务规划型 Agent 实战](agent-tutorial/README.md)
@@ -43,6 +44,7 @@ python scripts/02_query.py "团队版多少钱，几个人可以用？"   # 问�
 cd agent-tutorial
 pip install -r requirements.txt && cp .env.example .env  # 填 API Key
 python scripts/01_task_agent.py "下周二到周四去上海出差，帮我安排行程"
+python scripts/03_web.py                                  # Web 界面 → http://127.0.0.1:8001
 ```
 
 ## 两个教程怎么配合
