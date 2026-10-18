@@ -8,6 +8,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+
 from agent import TaskAgent
 
 DEFAULT_GOAL = "下周二到周四去上海出差（从北京出发），帮我安排完整的差旅行程"
