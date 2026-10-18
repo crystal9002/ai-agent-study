@@ -30,6 +30,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import os
 
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+
 from llama_index.core import Settings, SimpleDirectoryReader, VectorStoreIndex
 from llama_index.core.node_parser import MarkdownNodeParser, SentenceSplitter
 from llama_index.core.query_engine import RetrieverQueryEngine

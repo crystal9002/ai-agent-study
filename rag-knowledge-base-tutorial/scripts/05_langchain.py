@@ -27,6 +27,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import os
 
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+
 import numpy as np
 from langchain_community.document_loaders import TextLoader
 from langchain_community.vectorstores import FAISS
