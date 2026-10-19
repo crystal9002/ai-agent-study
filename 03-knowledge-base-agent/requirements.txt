@@ -1,0 +1,14 @@
+# ===== 本地检索（Intel Mac 兼容：torch 最高 2.2.2，故钉版本）=====
+numpy==1.26.4
+sentence-transformers==3.3.1        # 自动带入 transformers 4.x 兼容版本
+faiss-cpu>=1.8.0
+
+# ===== LLM（OpenAI 兼容 API）=====
+openai>=1.30.0
+
+# ===== 配置 =====
+python-dotenv>=1.0.0
+
+# ===== Web 界面（scripts/03_web.py）=====
+fastapi>=0.110.0
+uvicorn>=0.29.0

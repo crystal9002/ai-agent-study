@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>多智能体协作 · MCP Tutorial</title>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #171a21; --panel2: #1e222c; --border: #2a2f3a;
+    --text: #e6e9ef; --muted: #9aa3b2; --accent: #7c5cff; --accent2: #35c28d;
+    --warn: #ffb454; --danger: #ff6b6b; --sup: #7c5cff; --res: #3aa0ff;
+    --calc: #ffb454; --write: #35c28d;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text); font: 15px/1.6 -apple-system,
+    "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif; height: 100vh;
+    display: flex; flex-direction: column;
+  }
+  header {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 13px 22px; border-bottom: 1px solid var(--border); background: var(--panel);
+  }
+  header h1 { font-size: 17px; font-weight: 600; }
+  .pills { display: flex; gap: 7px; flex-wrap: wrap; }
+  .pill { font-size: 12px; color: var(--muted); background: var(--panel2);
+    border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px; }
+  .pill b { color: var(--accent2); font-weight: 600; }
+  .goalbox { padding: 14px 22px; border-bottom: 1px solid var(--border); background: var(--panel);
+    display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .goalbox textarea { flex: 1; min-width: 320px; resize: vertical; min-height: 44px;
+    background: var(--panel2); color: var(--text); border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 12px; font: inherit; outline: none; }
+  .goalbox textarea:focus { border-color: var(--accent); }
+  button { cursor: pointer; border: none; border-radius: 9px; font-weight: 600;
+    font-size: 14px; transition: .15s; }
+  #run { background: var(--accent); color: #fff; height: 42px; padding: 0 22px; }
+  #run:hover { filter: brightness(1.12); }
+  #run:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
+  .chip { cursor: pointer; background: var(--panel2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px;
+    font-size: 12.5px; transition: .15s; }
+  .chip:hover { border-color: var(--accent); color: var(--accent); }
+  .lanes { flex: 1; display: grid; grid-template-columns: 1.1fr 1fr 1fr 1fr;
+    overflow: hidden; }
+  .lane { border-right: 1px solid var(--border); display: flex; flex-direction: column;
+    overflow: hidden; }
+  .lane:last-child { border-right: none; }
+  .lane-head { padding: 10px 14px; border-bottom: 1px solid var(--border);
+    background: var(--panel); font-size: 13.5px; font-weight: 600;
+    display: flex; align-items: center; gap: 8px; flex: none; }
+  .lane-head .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  .lane-head .tools { margin-left: auto; font-weight: 400; font-size: 11px;
+    color: var(--muted); font-family: ui-monospace, monospace; }
+  #lane-supervisor .dot { background: var(--sup); }
+  #lane-researcher .dot { background: var(--res); }
+  #lane-calculator .dot { background: var(--calc); }
+  #lane-writer .dot { background: var(--write); }
+  .lane-body { flex: 1; overflow-y: auto; padding: 12px; }
+  .empty { color: var(--muted); font-size: 12.5px; text-align: center; margin-top: 30px; }
+  .ev { border: 1px solid var(--border); background: var(--panel2);
+    border-radius: 9px; padding: 8px 10px; margin-bottom: 9px; font-size: 12.5px;
+    animation: fadeIn .25s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } }
+  .ev .meta { color: var(--muted); font-size: 11.5px; margin-bottom: 4px;
+    display: flex; gap: 6px; align-items: center; }
+  .ev .meta .tag { font-weight: 700; }
+  .ev.plan { border-color: #4a3a8f; }
+  .ev.plan .tag { color: var(--sup); }
+  .ev.step .tag { color: var(--warn); }
+  .ev.done { border-color: #245c44; }
+  .ev.done .tag { color: var(--accent2); }
+  .ev.retry { border-color: #6b5518; }
+  .ev.retry .tag { color: var(--warn); }
+  .ev.fail { border-color: #7a2e35; }
+  .ev.fail .tag { color: var(--danger); }
+  .ev .code { background: var(--bg); border: 1px solid var(--border);
+    border-radius: 6px; padding: 6px 8px; font: 11.5px/1.5 ui-monospace, Menlo,
+    monospace; white-space: pre-wrap; word-break: break-all; color: #c9d3e5;
+    max-height: 130px; overflow: auto; margin-top: 5px; }
+  .ev .concl { color: #bfe8d5; white-space: pre-wrap; word-break: break-word; }
+  .final-bar { flex: none; border-top: 1px solid var(--border); background: var(--panel);
+    padding: 12px 22px; max-height: 30vh; overflow-y: auto; display: none; }
+  .final-bar h3 { font-size: 13px; color: var(--accent); margin-bottom: 6px; }
+  .final-bar pre { white-space: pre-wrap; font: 13px/1.6 inherit; color: var(--text); }
+  .err { background: #3a1d22; border: 1px solid #7a2e35; color: #ffb4b4;
+    border-radius: 10px; padding: 10px 14px; font-size: 13px; margin: 12px 22px; display: none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🤝 Supervisor / Worker 多智能体</h1>
+  <div class="pills" id="metaPill"><span class="pill">加载配置…</span></div>
+</header>
+
+<div class="goalbox">
+  <textarea id="goal">查团队版定价，算 50 人一年的总费用（如有年付折扣请计入），写成 summary.md</textarea>
+  <button id="run">运行</button>
+  <span class="chip">查团队版定价，算 50 人一年的总费用（如有年付折扣请计入），写成 summary.md</span>
+  <span class="chip">企业版 20 人首年费用，写成 budget.md</span>
+</div>
+
+<div class="err" id="err"></div>
+
+<div class="lanes">
+  <div class="lane" id="lane-supervisor">
+    <div class="lane-head"><span class="dot"></span>🧠 Supervisor<span class="tools">路由/验收/汇总</span></div>
+    <div class="lane-body"><div class="empty">等待运行…</div></div>
+  </div>
+  <div class="lane" id="lane-researcher">
+    <div class="lane-head"><span class="dot"></span>🔍 Researcher<span class="tools">search_kb</span></div>
+    <div class="lane-body"><div class="empty">待命</div></div>
+  </div>
+  <div class="lane" id="lane-calculator">
+    <div class="lane-head"><span class="dot"></span>🧮 Calculator<span class="tools">calc</span></div>
+    <div class="lane-body"><div class="empty">待命</div></div>
+  </div>
+  <div class="lane" id="lane-writer">
+    <div class="lane-head"><span class="dot"></span>✍️ Writer<span class="tools">save</span></div>
+    <div class="lane-body"><div class="empty">待命</div></div>
+  </div>
+</div>
+
+<div class="final-bar" id="finalBar">
+  <h3>🏁 最终结论</h3><pre id="finalText"></pre>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+let running = false, controller = null;
+
+async function loadConfig() {
+  try {
+    const c = await (await fetch('/api/config')).json();
+    $('#metaPill').innerHTML =
+      `<span class="pill">模型 <b>${c.model}</b></span>` +
+      `<span class="pill">supervisor + ${c.workers.length} workers</span>`;
+  } catch { $('#metaPill').innerHTML = '<span class="pill">配置加载失败</span>'; }
+}
+loadConfig();
+
+const esc = t => String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const trunc = (t, n=400) => t.length > n ? t.slice(0, n) + '…' : t;
+const laneOf = w => document.querySelector(`#lane-${w} .lane-body`) || $('#lane-supervisor .lane-body');
+
+function clearLanes() {
+  document.querySelectorAll('.lane-body').forEach(el =>
+    el.innerHTML = '<div class="empty">等待事件…</div>');
+  $('#finalBar').style.display = 'none';
+  $('#err').style.display = 'none';
+}
+
+function addEvent(lane, cls, tag, text, code) {
+  const body = laneOf(lane);
+  if (body.querySelector('.empty')) body.innerHTML = '';
+  const el = document.createElement('div');
+  el.className = 'ev ' + cls;
+  el.innerHTML = `<div class="meta"><span class="tag">${esc(tag)}</span></div>` +
+    (text ? `<div class="concl">${esc(text)}</div>` : '') +
+    (code ? `<div class="code">${esc(code)}</div>` : '');
+  body.appendChild(el);
+  body.scrollTop = body.scrollHeight;
+}
+
+function handle(ev) {
+  switch (ev.type) {
+    case 'goal':
+      clearLanes();
+      addEvent('supervisor', 'plan', '🎯 收到目标', ev.goal);
+      break;
+    case 'supervisor_plan':
+      addEvent('supervisor', 'plan', `🧠 Round ${ev.round} · ${ev.decision}`, null,
+               ev.task ? `task: ${trunc(ev.task, 500)}` : null);
+      break;
+    case 'dispatch': {
+      addEvent('supervisor', 'plan', `📤 分派 → ${ev.to}`, trunc(ev.task, 260));
+      addEvent(ev.to, 'step', '📥 收到任务', trunc(ev.task, 260));
+      break; }
+    case 'worker_step':
+      addEvent(ev.worker, 'step', `🔧 ${ev.tool}`, null,
+               `args: ${JSON.stringify(ev.args)}\nresult: ${trunc(JSON.stringify(ev.result), 400)}`);
+      break;
+    case 'worker_done': {
+      const tag = ev.retried ? '✅ 交回（重派）' : '✅ 交回结果';
+      addEvent(ev.worker, 'done', tag, trunc(ev.result, 500));
+      addEvent('supervisor', 'done', `📥 收到 ${ev.worker} 结果`, trunc(ev.result, 200));
+      break; }
+    case 'worker_retry':
+      addEvent('supervisor', 'retry', `🔁 重派 ${ev.worker}`, trunc(ev.reason, 200));
+      addEvent(ev.worker, 'retry', '🔁 被重派', trunc(ev.reason, 200));
+      break;
+    case 'worker_failed':
+      addEvent('supervisor', 'fail', `❌ 放弃 ${ev.worker}`, ev.reason);
+      break;
+    case 'final':
+      addEvent('supervisor', 'done', '🏁 汇总完成', trunc(ev.content, 600));
+      $('#finalText').textContent = ev.content;
+      $('#finalBar').style.display = 'block';
+      break;
+    case 'error':
+      $('#err').textContent = '出错了：' + ev.message;
+      $('#err').style.display = 'block';
+      break;
+  }
+}
+
+async function run() {
+  const goal = $('#goal').value.trim();
+  if (!goal || running) return;
+  running = true; $('#run').disabled = true;
+  controller = new AbortController();
+  clearLanes();
+  try {
+    // 绝对路径 /api/*；中文参数靠浏览器自动编码
+    const resp = await fetch('/api/run?goal=' + encodeURIComponent(goal),
+                             {signal: controller.signal});
+    const reader = resp.body.getReader(), dec = new TextDecoder();
+    let buf = '';
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, {stream: true});
+      const frames = buf.split('\n\n'); buf = frames.pop();
+      for (const f of frames) {
+        const ev = /event: (.*)/.exec(f), dt = /data: (.*)/.exec(f);
+        if (ev && dt) handle(JSON.parse(dt[1]));
+      }
+    }
+  } catch (e) {
+    if (e.name !== 'AbortError') {
+      $('#err').textContent = '连接中断：' + e.message;
+      $('#err').style.display = 'block';
+    }
+  } finally {
+    running = false; controller = null; $('#run').disabled = false;
+  }
+}
+
+$('#run').onclick = run;
+$('#goal').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); run(); }
+});
+document.querySelectorAll('.chip').forEach(c =>
+  c.addEventListener('click', () => { $('#goal').value = c.textContent.trim(); run(); }));
+</script>
+</body>
+</html>

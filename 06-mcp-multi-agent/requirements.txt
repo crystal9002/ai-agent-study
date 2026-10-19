@@ -1,0 +1,9 @@
+# 原生版依赖（MCP + 多智能体 + Web）
+openai>=1.30.0
+python-dotenv>=1.0.0
+fastapi>=0.110.0
+uvicorn>=0.29.0
+# 锁 1.x + cryptography<45：mcp 经 pyjwt[crypto] 间接依赖 cryptography，
+# 其 45+ 版本在本机可能无预编译 wheel、源码编译又需新版 cargo，故锁定
+mcp>=1.0.0,<2
+cryptography<45

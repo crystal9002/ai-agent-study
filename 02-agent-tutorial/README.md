@@ -2,7 +2,7 @@
 
 **从零手写一个 Plan-and-Execute Agent**（规划 → 逐步 ReAct 执行 → 汇总），
 原生实现讲透原理，再给出 LangGraph 生产版对照——与同目录下的
-[RAG 教程](../rag-knowledge-base-tutorial/README.md)同一风格。
+[RAG 教程](../01-rag-knowledge-base-tutorial/README.md)同一风格。
 
 场景：**差旅规划**——给它一个目标"下周二到周四去上海出差"，它会自己
 拆解计划、查航班/酒店/天气、看日历排日程、算费用，最后产出一份完整行程方案。
@@ -22,7 +22,7 @@
 ### 1. 安装
 
 ```bash
-cd agent-tutorial
+cd 02-agent-tutorial
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env   # 填 OPENAI_BASE_URL / OPENAI_API_KEY / LLM_MODEL
@@ -56,7 +56,7 @@ python scripts/02_langgraph.py
 ## 项目结构
 
 ```
-agent-tutorial/
+02-agent-tutorial/
 ├── README.md
 ├── requirements.txt / requirements-framework.txt
 ├── .env.example

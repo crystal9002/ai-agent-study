@@ -1,0 +1,2 @@
+# 框架对照（生产观测平台）：scripts/06_langfuse.py
+langfuse>=2.0

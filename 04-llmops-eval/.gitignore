@@ -1,0 +1,6 @@
+# 本教程目录私有忽略（不动仓库根 .gitignore）
+.venv/
+runs/
+__pycache__/
+*.pyc
+.env

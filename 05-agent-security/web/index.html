@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent 安全实战 · 三道防线演示</title>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #171a21; --panel2: #1e222c; --border: #2a2f3a;
+    --text: #e6e9ef; --muted: #9aa3b2; --accent: #7c5cff; --accent2: #35c28d;
+    --warn: #ffb454; --danger: #ff6b6b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text); font: 15px/1.6 -apple-system,
+    "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif; height: 100vh;
+    display: flex; flex-direction: column;
+  }
+  header {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 12px 20px; border-bottom: 1px solid var(--border); background: var(--panel);
+  }
+  header h1 { font-size: 16px; font-weight: 600; }
+  .pills { display: flex; gap: 7px; flex-wrap: wrap; }
+  .pill { font-size: 12px; color: var(--muted); background: var(--panel2);
+    border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px; }
+  .pill b { color: var(--accent2); font-weight: 600; }
+  .layout { flex: 1; display: grid; grid-template-columns: 300px 1fr 350px; overflow: hidden; }
+  aside, main { overflow-y: auto; }
+  aside.left { border-right: 1px solid var(--border); background: var(--panel); padding: 16px 14px; }
+  aside.right { border-left: 1px solid var(--border); background: var(--panel); padding: 16px 14px; }
+  main { padding: 20px 22px; }
+  h3 { font-size: 12.5px; color: var(--muted); text-transform: uppercase;
+    letter-spacing: .08em; margin: 14px 0 8px; }
+  h3:first-child { margin-top: 0; }
+  textarea {
+    width: 100%; resize: vertical; min-height: 78px; background: var(--panel2);
+    color: var(--text); border: 1px solid var(--border); border-radius: 10px;
+    padding: 9px 11px; font: inherit; line-height: 1.5; outline: none;
+  }
+  textarea:focus { border-color: var(--accent); }
+  button { cursor: pointer; border: none; border-radius: 9px; font-weight: 600;
+    font-size: 13.5px; transition: .15s; }
+  #run { width: 100%; background: var(--accent); color: #fff; height: 38px; margin-top: 8px; }
+  #run:hover { filter: brightness(1.12); }
+  #run:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
+  .chip { cursor: pointer; background: var(--panel2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 8px; padding: 6px 9px;
+    font-size: 12px; margin: 0 6px 7px 0; display: inline-block; transition: .15s; }
+  .chip:hover { border-color: var(--accent); color: var(--accent); }
+  .tool { font-size: 12.5px; padding: 7px 9px; background: var(--panel2);
+    border: 1px solid var(--border); border-radius: 8px; margin-bottom: 6px; }
+  .tool b { color: var(--accent); font-family: ui-monospace, monospace; }
+  .tool i { display: block; color: var(--muted); font-style: normal;
+    font-size: 11px; margin-top: 2px; }
+  .placeholder { color: var(--muted); text-align: center; margin-top: 12vh; }
+  .placeholder h2 { color: var(--text); font-size: 19px; margin-bottom: 6px; }
+  .ev { border-left: 2px solid var(--border); padding: 3px 0 12px 14px;
+    margin-left: 7px; position: relative; }
+  .ev::before { content: ""; position: absolute; left: -6px; top: 7px;
+    width: 10px; height: 10px; border-radius: 50%; background: var(--border); }
+  .ev.call::before { background: var(--accent); }
+  .ev.allow::before { background: var(--accent2); }
+  .ev.deny::before { background: var(--danger); }
+  .ev.meta::before { background: var(--warn); }
+  .ev .m { font-size: 12.5px; color: var(--muted); margin-bottom: 3px; }
+  .ev .m b { color: var(--text); }
+  .code { background: var(--panel2); border: 1px solid var(--border); border-radius: 8px;
+    padding: 7px 10px; font: 12px/1.5 ui-monospace, Menlo, monospace; white-space: pre-wrap;
+    word-break: break-all; color: #c9d3e5; max-height: 130px; overflow: auto; }
+  .badge { display: inline-block; font-size: 11px; font-weight: 700; border-radius: 6px;
+    padding: 0 6px; margin-right: 4px; color: #000; }
+  .b-allow { background: var(--accent2); } .b-deny { background: var(--danger); }
+  .b-level { background: var(--warn); } .b-defense { background: var(--accent); color: #fff; }
+  .final { background: var(--panel); border: 1px solid var(--accent); border-radius: 12px;
+    padding: 14px 18px; margin-top: 8px; white-space: pre-wrap; }
+  .err { background: #3a1d22; border: 1px solid #7a2e35; color: #ffb4b4;
+    border-radius: 10px; padding: 9px 13px; font-size: 13px; margin-top: 10px; }
+  .appr { border: 1px solid var(--warn); background: #2a2318; border-radius: 10px;
+    padding: 10px 12px; margin-bottom: 9px; font-size: 12.5px; }
+  .appr h4 { font-size: 13px; color: var(--warn); margin-bottom: 4px; }
+  .appr .args { font: 11.5px ui-monospace, monospace; color: #c9d3e5;
+    background: var(--panel2); border-radius: 6px; padding: 5px 8px; margin: 5px 0;
+    white-space: pre-wrap; word-break: break-all; }
+  .appr .row { display: flex; gap: 8px; margin-top: 6px; }
+  .appr button { flex: 1; height: 30px; }
+  .appr .ok { background: var(--accent2); color: #000; }
+  .appr .no { background: transparent; color: var(--danger); border: 1px solid var(--danger); }
+  .appr .done { color: var(--muted); font-size: 12px; margin-top: 5px; }
+  .audit { font: 11.5px/1.5 ui-monospace, Menlo, monospace; }
+  .audit .rec { border-bottom: 1px dashed var(--border); padding: 5px 2px; color: var(--muted); }
+  .audit .rec b { color: var(--text); }
+  .audit .rec .d-deny { color: var(--danger); } .audit .rec .d-allow { color: var(--accent2); }
+  .muted { color: var(--muted); font-size: 12.5px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🛡 Agent 安全实战 · 三道防线</h1>
+  <div class="pills" id="pills"><span class="pill">加载配置…</span></div>
+</header>
+
+<div class="layout">
+  <aside class="left">
+    <h3>任务</h3>
+    <textarea id="task" placeholder="例如：列出沙箱文件，然后读 readme.txt 总结"></textarea>
+    <button id="run">运行安全 Agent（interactive 策略）</button>
+    <div style="margin-top:9px" id="chips"></div>
+
+    <h3>可用工具（三级权限）</h3>
+    <div id="tools"></div>
+    <p class="muted">read=自动放行 · write=记录放行 · destructive=出待审卡片，超时按 default-deny 拒绝。</p>
+  </aside>
+
+  <main id="main">
+    <div class="placeholder">
+      <h2>注入隔离 → 权限沙箱 → 人工审批</h2>
+      <p>左侧输入任务；中间看 Agent 执行流与每次调用命中的防线；<br>
+      右侧处理危险操作审批、查看审计日志。</p>
+    </div>
+  </main>
+
+  <aside class="right">
+    <h3>待审批（pending）</h3>
+    <div id="approvals"><div class="muted">暂无待审批操作</div></div>
+    <h3>审计日志 <span class="muted" id="auditCount"></span></h3>
+    <div class="audit" id="audit"><div class="muted">加载中…</div></div>
+  </aside>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+let running = false, controller = null;
+
+async function loadConfig() {
+  try {
+    const c = await (await fetch('/api/config')).json();
+    $('#pills').innerHTML =
+      `<span class="pill">模型 <b>${c.model}</b></span>` +
+      `<span class="pill">策略 <b>interactive</b></span>` +
+      `<span class="pill">端口 <b>8004</b></span>`;
+    $('#tools').innerHTML = c.tools.map(t =>
+      `<div class="tool"><b>${t.name}</b><i>${t.description}</i></div>`).join('');
+    $('#chips').innerHTML = c.example_tasks.map(t =>
+      `<span class="chip">${t}</span>`).join('');
+    document.querySelectorAll('.chip').forEach(el =>
+      el.addEventListener('click', () => { $('#task').value = el.textContent.trim(); run(); }));
+  } catch (e) { $('#pills').innerHTML = '<span class="pill">配置加载失败</span>'; }
+}
+loadConfig();
+
+const esc = t => String(t ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const trunc = (t, n=600) => t.length > n ? t.slice(0, n) + '…' : t;
+
+function clearMain() {
+  $('#main').innerHTML = '<div id="log"></div><div id="finalBox"></div>';
+}
+const log = html => {
+  const el = document.createElement('div');
+  el.innerHTML = html;
+  $('#log').appendChild(el);
+  $('#main').scrollTo({top: $('#main').scrollHeight, behavior: 'smooth'});
+};
+
+function handle(ev) {
+  switch (ev.type) {
+    case 'turn':
+      log(`<div class="ev meta"><div class="m">— 第 <b>${ev.iter}/${ev.max}</b> 轮 ReAct —</div></div>`);
+      break;
+    case 'tool_call':
+      log(`<div class="ev call"><div class="m">🔧 <b>${esc(ev.name)}</b> 调用</div>
+        <div class="code">${esc(trunc(JSON.stringify(ev.args, null, 2), 300))}</div></div>`);
+      break;
+    case 'decision': {
+      const dm = ev.decision === 'deny' ? 'b-deny' : (ev.decision === 'flag' ? 'b-level' : 'b-allow');
+      const defs = (ev.defense || []).map(d => `<span class="badge b-defense">${esc(d)}</span>`).join('');
+      const det = (ev.detection || []).length
+        ? `<div class="m">注射命中：<b style="color:var(--danger)">${ev.detection.map(esc).join(', ')}</b></div>` : '';
+      log(`<div class="ev ${ev.decision === 'deny' ? 'deny' : 'allow'}">
+        <div class="m"><span class="badge ${dm}">${esc(ev.decision)}</span>
+          层级=${esc(ev.level || '-')} ${defs}</div>${det}
+        ${ev.reason ? `<div class="m">${esc(trunc(ev.reason, 200))}</div>` : ''}</div>`);
+      refreshApprovals(); refreshAudit();
+      break; }
+    case 'tool_result':
+      log(`<div class="ev ${ev.blocked ? 'deny' : 'allow'}">
+        <div class="m">↩ ${esc(ev.name)} 返回${ev.blocked ? '（已被拦截）' : ''}</div>
+        <div class="code">${esc(trunc(ev.result, 500))}</div></div>`);
+      break;
+    case 'pending':
+      log(`<div class="ev meta"><div class="m">⏳ 生成待审批 <b>${esc(ev.approval_id)}</b>：
+        ${esc(ev.tool)} — 请在右侧「待审批」处理（超时按 default-deny 拒绝）</div></div>`);
+      refreshApprovals();
+      break;
+    case 'approval':
+      log(`<div class="ev meta"><div class="m">🗳 审批结果 <b>${esc(ev.status)}</b>（${esc(ev.approval_id)}）</div></div>`);
+      refreshApprovals();
+      break;
+    case 'final':
+      $('#finalBox').innerHTML =
+        `<div class="final"><b style="color:var(--accent)">📝 最终回答</b>\n\n${esc(ev.content)}</div>`;
+      $('#main').scrollTo({top: $('#main').scrollHeight, behavior: 'smooth'});
+      break;
+    case 'run_summary':
+      log(`<div class="ev meta"><div class="m">状态 <b>${esc(ev.status)}</b> ｜
+        工具调用 ${ev.total} ｜ 拦截 <b style="color:var(--danger)">${ev.blocked}</b> ｜
+        run_id=${esc(ev.run_id)}</div></div>`);
+      break;
+    case 'error':
+      log(`<div class="err">出错了：${esc(ev.message)}</div>`);
+      break;
+  }
+}
+
+// ---------- 审批 ----------
+
+async function refreshApprovals() {
+  try {
+    const d = await (await fetch('/api/approvals?status=pending')).json();
+    const box = $('#approvals');
+    if (!d.approvals.length) { box.innerHTML = '<div class="muted">暂无待审批操作</div>'; return; }
+    box.innerHTML = d.approvals.map(a => `
+      <div class="appr" id="ap-${esc(a.id)}">
+        <h4>⚠ ${esc(a.tool)} <span class="muted">(${esc(a.level)})</span></h4>
+        <div>${esc(a.reason)}</div>
+        <div class="args">${esc(JSON.stringify(a.args, null, 2))}</div>
+        <div class="muted">id=${esc(a.id)} · ${esc(a.created_at)}</div>
+        <div class="row">
+          <button class="ok" data-id="${esc(a.id)}" data-d="approved">批准</button>
+          <button class="no" data-id="${esc(a.id)}" data-d="denied">拒绝</button>
+        </div>
+      </div>`).join('');
+    box.querySelectorAll('button[data-id]').forEach(btn =>
+      btn.addEventListener('click', () => decide(btn.dataset.id, btn.dataset.d)));
+  } catch {}
+}
+
+async function decide(id, decision) {
+  const resp = await fetch('/api/approvals/' + encodeURIComponent(id), {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({decision, by: 'web'}),
+  });
+  const el = document.getElementById('ap-' + id);
+  if (resp.ok && el) {
+    const r = await resp.json();
+    el.innerHTML = `<h4>已${decision === 'approved' ? '批准 ✓' : '拒绝 ✗'}</h4>
+      <div class="done">id=${esc(r.id)} · by ${esc(r.decided_by)} · Agent 会继续执行/调整</div>`;
+  }
+  setTimeout(refreshApprovals, 400);
+}
+
+// ---------- 审计 ----------
+
+async function refreshAudit() {
+  try {
+    const d = await (await fetch('/api/audit?limit=30')).json();
+    $('#auditCount').textContent = `(${d.count})`;
+    if (!d.records.length) { $('#audit').innerHTML = '<div class="muted">暂无记录</div>'; return; }
+    $('#audit').innerHTML = d.records.slice().reverse().map(r => `
+      <div class="rec">
+        <span>${esc((r.ts || '').slice(11, 19))}</span>
+        <b>${esc(r.tool)}</b>
+        <span class="d-${esc(r.decision)}">${esc(r.decision)}</span>
+        ${r.detection && r.detection.length
+          ? `<span style="color:var(--danger)">[注入:${r.detection.map(h => esc(h.name)).join(',')}]</span>` : ''}
+        ${(r.defense || []).length ? `<span>· ${r.defense.map(esc).join('+')}</span>` : ''}
+      </div>`).join('');
+  } catch {}
+}
+refreshApprovals(); refreshAudit();
+setInterval(() => { refreshApprovals(); }, 3000);
+
+// ---------- SSE 运行 ----------
+
+async function run() {
+  const task = $('#task').value.trim();
+  if (!task || running) return;
+  running = true; $('#run').disabled = true;
+  controller = new AbortController();
+  clearMain();
+  const auditTimer = setInterval(refreshAudit, 2000);
+  try {
+    const resp = await fetch('/api/run?task=' + encodeURIComponent(task),
+                             {signal: controller.signal});
+    const reader = resp.body.getReader(), dec = new TextDecoder();
+    let buf = '';
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, {stream: true});
+      const frames = buf.split('\n\n'); buf = frames.pop();
+      for (const f of frames) {
+        const ev = /event: (.*)/.exec(f), dt = /data: (.*)/.exec(f);
+        if (ev && dt) handle(JSON.parse(dt[1]));
+      }
+    }
+  } catch (e) {
+    if (e.name !== 'AbortError') log(`<div class="err">连接中断：${esc(e.message)}</div>`);
+  } finally {
+    clearInterval(auditTimer);
+    running = false; controller = null;
+    $('#run').disabled = false;
+    refreshApprovals(); refreshAudit();
+  }
+}
+$('#run').onclick = run;
+$('#task').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); run(); }
+});
+</script>
+</body>
+</html>

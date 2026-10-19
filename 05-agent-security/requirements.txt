@@ -1,0 +1,7 @@
+# 原生安全层依赖（轻量：LLM 客户端 + Web）
+openai>=1.30.0
+python-dotenv>=1.0.0
+
+# Web 界面（scripts/03_web.py）
+fastapi>=0.110.0
+uvicorn>=0.29.0

@@ -1,0 +1,6 @@
+# 框架对照（scripts/04_framework.py）追加依赖
+# pip install -r requirements.txt -r requirements-framework.txt
+#
+# 首选 guardrails-ai：结构化校验框架（Rail + Validator + on-fail 策略）。
+# 若安装失败或过重（依赖树大 / 拖慢 CI），降级方案见 docs/06-frameworks.md。
+guardrails-ai>=0.5.0

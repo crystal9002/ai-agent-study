@@ -1,0 +1,19 @@
+# 本教程目录的忽略规则（不改动仓库根 .gitignore）
+
+# 虚拟环境
+.venv/
+
+# 密钥（根 .gitignore 已忽略，这里兜底）
+.env
+
+# Python
+__pycache__/
+*.pyc
+
+# 审计与审批日志（运行产物）
+audit/
+
+# 攻击演示的动态投放物（prepare() 生成，cleanup() 清理）
+sandbox_workspace/attack_stage/
+sandbox_workspace/poisoned_report.txt
+.secret_demo

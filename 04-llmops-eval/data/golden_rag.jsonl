@@ -1,0 +1,12 @@
+{"id": "rag-01", "type": "qa", "question": "智能云盘团队版的价格是多少？", "expected_chunks": ["团队版", "29 元"], "expected_answer_contains": ["29"]}
+{"id": "rag-02", "type": "qa", "question": "免费版有多少存储空间？", "expected_chunks": ["5 GB", "免费版"], "expected_answer_contains": ["5 GB"]}
+{"id": "rag-03", "type": "retrieval", "question": "支持上传哪些文件格式？", "expected_chunks": ["格式", "pdf"], "expected_answer_contains": []}
+{"id": "rag-04", "type": "qa", "question": "客户端支持哪几个平台的实时同步？", "expected_chunks": ["同步", "Windows"], "expected_answer_contains": ["Windows"]}
+{"id": "rag-05", "type": "qa", "question": "数据加密采用什么方式？有没有安全认证？", "expected_chunks": ["AES-256", "ISO 27001"], "expected_answer_contains": ["AES-256"]}
+{"id": "rag-06", "type": "qa", "question": "OpenAPI 是怎么做鉴权的？", "expected_chunks": ["Bearer", "鉴权"], "expected_answer_contains": ["Bearer"]}
+{"id": "rag-07", "type": "retrieval", "question": "API 默认限流是多少？", "expected_chunks": ["限流", "100 次"], "expected_answer_contains": []}
+{"id": "rag-08", "type": "qa", "question": "删除的文件在回收站保留多少天？", "expected_chunks": ["回收站", "30 天"], "expected_answer_contains": ["30"]}
+{"id": "rag-09", "type": "qa", "question": "年付订单可以退款吗？规则是什么？", "expected_chunks": ["退款", "7 天"], "expected_answer_contains": ["7 天"]}
+{"id": "rag-10", "type": "qa", "question": "企业版支持哪些单点登录方式？", "expected_chunks": ["SAML", "单点登录"], "expected_answer_contains": ["SAML"]}
+{"id": "rag-11", "type": "retrieval", "question": "在线客服的工作时间是几点到几点？", "expected_chunks": ["9:00-18:00", "在线客服"], "expected_answer_contains": []}
+{"id": "rag-12", "type": "qa", "question": "你们公司的 CEO 是谁？", "expected_chunks": [], "expected_answer_contains": ["没有"]}

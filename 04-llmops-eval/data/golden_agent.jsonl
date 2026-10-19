@@ -1,0 +1,8 @@
+{"id": "agent-01", "goal": "查一下团队版每位成员每月多少钱，然后告诉我结论。", "must_call_tools": ["search"], "success_regex": "29", "max_turns": 4}
+{"id": "agent-02", "goal": "帮我计算 (123+456)/3 等于多少。", "must_call_tools": ["calculator"], "success_regex": "193", "max_turns": 4}
+{"id": "agent-03", "goal": "现在几点了？把当前日期时间告诉我。", "must_call_tools": ["get_time"], "success_regex": "(\\d{4}[-年]\\d{1,2}[-月]\\d{1,2})", "max_turns": 4}
+{"id": "agent-04", "goal": "团队版是年付按10个月计费的，帮我算4个成员一年总共要花多少钱。", "must_call_tools": ["search", "calculator"], "success_regex": "1160", "max_turns": 6}
+{"id": "agent-05", "goal": "API 默认每分钟限流100次，那么一小时最多能发多少次请求？", "must_call_tools": ["calculator"], "success_regex": "6000", "max_turns": 5}
+{"id": "agent-06", "goal": "免费版单文件上传上限是多少 MB？", "must_call_tools": ["search"], "success_regex": "100", "max_turns": 4}
+{"id": "agent-07", "goal": "企业版支持哪些单点登录协议？查资料回答。", "must_call_tools": ["search"], "expected_contains": ["SAML"], "max_turns": 4}
+{"id": "agent-08", "goal": "回收站文件保留30天，企业版可以延长到多少天？另外帮我算一下30乘以3是多少。", "must_call_tools": ["search", "calculator"], "success_regex": "90", "max_turns": 6}

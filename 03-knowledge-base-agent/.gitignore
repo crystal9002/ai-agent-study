@@ -1,0 +1,9 @@
+# ===== 本教程生成物（不入库）=====
+index/
+output/
+.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/

@@ -1,0 +1,4 @@
+# LangGraph 框架对照版依赖（仅 scripts/05 需要）
+langgraph>=0.2.0
+langchain-openai>=0.1.0
+langchain-core>=0.2.0

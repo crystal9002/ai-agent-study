@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>知识库助手 Agent · Agent Tutorial</title>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #171a21; --panel2: #1e222c; --border: #2a2f3a;
+    --text: #e6e9ef; --muted: #9aa3b2; --accent: #7c5cff; --accent2: #35c28d;
+    --warn: #ffb454; --danger: #ff6b6b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text); font: 15px/1.6 -apple-system,
+    "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif; height: 100vh;
+    display: flex; flex-direction: column;
+  }
+  header {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 13px 22px; border-bottom: 1px solid var(--border); background: var(--panel);
+  }
+  header h1 { font-size: 17px; font-weight: 600; }
+  .pills { display: flex; gap: 7px; flex-wrap: wrap; }
+  .pill { font-size: 12px; color: var(--muted); background: var(--panel2);
+    border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px; }
+  .pill b { color: var(--accent2); font-weight: 600; }
+  .layout { flex: 1; display: grid; grid-template-columns: 340px 1fr; overflow: hidden; }
+  aside {
+    border-right: 1px solid var(--border); background: var(--panel);
+    overflow-y: auto; padding: 18px 16px;
+  }
+  aside h3 { font-size: 13px; color: var(--muted); text-transform: uppercase;
+    letter-spacing: .08em; margin: 16px 0 9px; }
+  aside h3:first-child { margin-top: 0; }
+  .qbox textarea {
+    width: 100%; resize: vertical; min-height: 84px; background: var(--panel2);
+    color: var(--text); border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 12px; font: inherit; line-height: 1.5; outline: none;
+  }
+  .qbox textarea:focus { border-color: var(--accent); }
+  .qbox .row { display: flex; gap: 8px; margin-top: 9px; }
+  button { cursor: pointer; border: none; border-radius: 9px; font-weight: 600;
+    font-size: 14px; transition: .15s; }
+  #run { flex: 1; background: var(--accent); color: #fff; height: 40px; }
+  #run:hover { filter: brightness(1.12); }
+  #run:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
+  #stop { display: none; background: var(--panel2); color: var(--danger);
+    border: 1px solid var(--danger); height: 40px; padding: 0 14px; }
+  .chip { cursor: pointer; background: var(--panel2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px;
+    font-size: 12.5px; margin: 0 6px 8px 0; display: inline-block; transition: .15s; }
+  .chip:hover { border-color: var(--accent); color: var(--accent); }
+  .toolbar .t { font-size: 12.5px; padding: 7px 9px; background: var(--panel2);
+    border: 1px solid var(--border); border-radius: 8px; margin-bottom: 6px; }
+  .toolbar .t b { color: var(--accent); font-family: ui-monospace, monospace; }
+  .toolbar .t i { display: block; color: var(--muted); font-style: normal;
+    font-size: 11.5px; margin-top: 2px; }
+  main { overflow-y: auto; padding: 22px 26px; }
+  .placeholder { color: var(--muted); text-align: center; margin-top: 14vh; }
+  .placeholder h2 { color: var(--text); font-size: 20px; margin-bottom: 6px; }
+  .ev { border-left: 2px solid var(--border); padding: 4px 0 14px 16px;
+    margin-left: 8px; position: relative; }
+  .ev::before { content: ""; position: absolute; left: -6px; top: 8px;
+    width: 10px; height: 10px; border-radius: 50%; background: var(--border); }
+  .ev.call::before { background: var(--accent); }
+  .ev.result::before { background: var(--accent2); }
+  .ev.start::before { background: var(--warn); }
+  .ev .meta { font-size: 12.5px; color: var(--muted); margin-bottom: 4px; }
+  .ev .meta b { color: var(--text); }
+  .ev .code { background: var(--panel2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 11px; font: 12.5px/1.55 ui-monospace,
+    Menlo, monospace; white-space: pre-wrap; word-break: break-all; color: #c9d3e5;
+    max-height: 220px; overflow: auto; }
+  .ev .hits { margin-top: 6px; display: grid; gap: 6px; }
+  .ev .hit { background: #16202c; border: 1px solid #24405c; border-radius: 8px;
+    padding: 7px 10px; font-size: 12.5px; color: #cfe0f5; }
+  .ev .hit b { color: #79b8ff; font-family: ui-monospace, monospace; }
+  #final { background: var(--panel); border: 1px solid var(--accent);
+    border-radius: 13px; padding: 18px 22px; margin-top: 6px; }
+  #final h2, #final h3 { margin: 13px 0 7px; line-height: 1.35; }
+  #final h2 { font-size: 18px; color: var(--accent); }
+  #final h3 { font-size: 15.5px; color: var(--accent2); }
+  #final p { margin: 7px 0; } #final ul, #final ol { margin: 7px 0 7px 22px; }
+  #final li { margin: 3px 0; }
+  #final code { background: var(--panel2); padding: 1.5px 6px; border-radius: 5px;
+    font: 13px ui-monospace, monospace; color: #ffd9a0; }
+  #final table { border-collapse: collapse; margin: 9px 0; width: 100%; font-size: 13.5px; }
+  #final td, #final th { border: 1px solid var(--border); padding: 6px 9px; text-align: left; }
+  #final th { background: var(--panel2); color: var(--accent); }
+  .err { background: #3a1d22; border: 1px solid #7a2e35; color: #ffb4b4;
+    border-radius: 10px; padding: 10px 14px; font-size: 13.5px; margin-top: 12px; }
+  .badge { display: inline-block; background: var(--accent); color: #fff; font-size: 11.5px;
+    font-weight: 700; border-radius: 6px; padding: 1px 7px; margin: 0 2px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>📚 知识库助手 Agent</h1>
+  <div class="pills" id="toolsPill"><span class="pill">加载配置…</span></div>
+</header>
+
+<div class="layout">
+  <aside>
+    <h3>向知识库提问</h3>
+    <div class="qbox">
+      <textarea id="q" placeholder="例如：团队版多少钱？50 个人一年多少钱？"></textarea>
+      <div class="row"><button id="run">运行 Agent</button><button id="stop">停止</button></div>
+    </div>
+    <div style="margin-top:10px">
+      <span class="chip">团队版多少钱？50个人一年多少钱？</span>
+      <span class="chip">API 搜索接口的限流是多少？</span>
+      <span class="chip">查出团队版价格，算 30 人年费，写进 note 文件</span>
+    </div>
+
+    <h3>可用工具</h3>
+    <div class="toolbar" id="toolbar"></div>
+
+    <h3>运行链路</h3>
+    <div style="font-size:12.5px;color:var(--muted);line-height:1.7">
+      start → tool_call → tool_result<br>→ …循环… → final<br>
+      检索结果以 <span class="badge">1</span> 编号回填，回答带引用溯源。
+    </div>
+  </aside>
+
+  <main id="main">
+    <div class="placeholder">
+      <h2>Search-as-Tool · ReAct Loop</h2>
+      <p>Agent 自己决定何时检索、检索几次、要不要算账，全程实时可见。</p>
+    </div>
+  </main>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+let running = false, controller = null;
+
+async function loadConfig() {
+  try {
+    const c = await (await fetch('/api/config')).json();
+    $('#toolsPill').innerHTML =
+      `<span class="pill">模型 <b>${c.model}</b></span>` +
+      c.tools.map(t => `<span class="pill">${t.name}</span>`).join('');
+    $('#toolbar').innerHTML = c.tools.map(t =>
+      `<div class="t"><b>${t.name}</b><i>${esc(t.description.split('\n')[0])}</i></div>`).join('');
+  } catch (e) { $('#toolsPill').innerHTML = '<span class="pill">配置加载失败</span>'; }
+}
+loadConfig();
+
+const esc = t => String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const trunc = (t, n=400) => t.length > n ? t.slice(0, n) + '…' : t;
+
+// Markdown 轻量渲染（先转义再加标签，避免 XSS；[n] 渲染成引用徽标）
+function md(src) {
+  const lines = esc(src).split('\n');
+  let html = '', inUl = false, inOl = false, inTbl = false;
+  const close = () => {
+    if (inUl) { html += '</ul>'; inUl = false; }
+    if (inOl) { html += '</ol>'; inOl = false; }
+    if (inTbl) { html += '</table>'; inTbl = false; }
+  };
+  const inline = s => s
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\[(\d+)\]/g, '<span class="badge">$1</span>');
+  for (const raw of lines) {
+    const l = raw.trimEnd();
+    if (/^\s*$/.test(l)) { close(); continue; }
+    if (/^###?\s+/.test(l)) { close(); const n = l.match(/^#+/).length;
+      html += `<h${n - 1}>${inline(l.replace(/^#+\s+/, ''))}</h${n - 1}>`; continue; }
+    if (/^\|.*\|/.test(l)) {
+      if (/^\|[\s\-:|]+\|$/.test(l)) continue;
+      if (!inTbl) { close(); html += '<table>'; inTbl = true; }
+      const cells = l.split('|').slice(1, -1).map(c => inline(c.trim()));
+      const tag = cells.every(c => /^<strong>|^$/.test(c)) && cells.length ? 'th' : 'td';
+      html += `<tr>${cells.map(c => `<${tag}>${c}</${tag}>`).join('')}</tr>`;
+      continue;
+    }
+    if (/^[-*]\s+/.test(l)) { if (!inUl) { close(); html += '<ul>'; inUl = true; }
+      html += `<li>${inline(l.replace(/^[-*]\s+/, ''))}</li>`; continue; }
+    if (/^\d+\.\s+/.test(l)) { if (!inOl) { close(); html += '<ol>'; inOl = true; }
+      html += `<li>${inline(l.replace(/^\d+\.\s+/, ''))}</li>`; continue; }
+    close(); html += `<p>${inline(l)}</p>`;
+  }
+  close();
+  return html;
+}
+
+function clearMain() {
+  $('#main').innerHTML = '<div id="log"></div><div id="final"></div>';
+}
+const log = html => {
+  const el = document.createElement('div');
+  el.innerHTML = html;
+  $('#log').appendChild(el);
+  $('#main').scrollTo({top: $('#main').scrollHeight, behavior: 'smooth'});
+};
+
+function pretty(args) {
+  try { return JSON.stringify(JSON.parse(args), null, 2); } catch { return String(args); }
+}
+
+function handle(ev) {
+  switch (ev.type) {
+    case 'start':
+      clearMain();
+      log(`<div class="ev start"><div class="meta">❓ <b>${esc(ev.question)}</b><br>
+        🛠 可用工具：${ev.tools.join('、')}</div></div>`);
+      break;
+    case 'tool_call':
+      log(`<div class="ev call"><div class="meta">🔧 调用 <b>${esc(ev.name)}</b></div>
+        <div class="code">${esc(pretty(ev.args))}</div></div>`);
+      break;
+    case 'tool_result': {
+      const r = ev.result || {};
+      let extra = '';
+      if (ev.name === 'search_kb' && Array.isArray(r.results) && r.results.length) {
+        extra = '<div class="hits">' + r.results.map(x =>
+          `<div class="hit"><b>[${x.n}]</b> ${esc(x.doc)} · ${esc(x.title)}<br>${esc(trunc(x.text, 160))}</div>`
+        ).join('') + '</div>';
+      }
+      const body = typeof ev.result === 'string' ? ev.result : JSON.stringify(ev.result, null, 2);
+      log(`<div class="ev result"><div class="meta">↩ 结果 <b>${esc(ev.name)}</b></div>
+        <div class="code">${esc(trunc(body, 700))}</div>${extra}</div>`);
+      break; }
+    case 'final':
+      $('#final').innerHTML =
+        `<div style="color:var(--accent);font-weight:700;margin-bottom:6px">📄 最终回答（带引用）</div>` +
+        md(ev.content);
+      $('#main').scrollTo({top: $('#main').scrollHeight, behavior: 'smooth'});
+      break;
+    case 'error':
+      log(`<div class="err">出错了：${esc(ev.message)}</div>`);
+      break;
+  }
+}
+
+async function run() {
+  const q = $('#q').value.trim();
+  if (!q || running) return;
+  running = true; $('#run').disabled = true; $('#stop').style.display = 'block';
+  controller = new AbortController();
+  clearMain();
+  try {
+    const resp = await fetch('/api/query?q=' + encodeURIComponent(q),
+                             {signal: controller.signal});
+    const reader = resp.body.getReader(), dec = new TextDecoder();
+    let buf = '';
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, {stream: true});
+      const frames = buf.split('\n\n'); buf = frames.pop();
+      for (const f of frames) {
+        const ev = /event: (.*)/.exec(f), dt = /data: (.*)/.exec(f);
+        if (ev && dt) handle(JSON.parse(dt[1]));
+      }
+    }
+  } catch (e) {
+    if (e.name !== 'AbortError') log(`<div class="err">连接中断：${esc(e.message)}</div>`);
+  } finally {
+    running = false; controller = null;
+    $('#run').disabled = false; $('#stop').style.display = 'none';
+  }
+}
+
+$('#run').onclick = run;
+$('#stop').onclick = () => controller?.abort();
+$('#q').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); run(); }
+});
+document.querySelectorAll('.chip').forEach(c =>
+  c.addEventListener('click', () => { $('#q').value = c.textContent.trim(); run(); }));
+</script>
+</body>
+</html>

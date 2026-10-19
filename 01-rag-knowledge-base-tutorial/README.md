@@ -19,7 +19,7 @@
 ### 1. 安装
 
 ```bash
-cd rag-knowledge-base-tutorial
+cd 01-rag-knowledge-base-tutorial
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env   # 填入你的 LLM API Key
@@ -69,7 +69,7 @@ python scripts/06_web.py        # 打开 http://127.0.0.1:8000
 ## 项目结构
 
 ```
-rag-knowledge-base-tutorial/
+01-rag-knowledge-base-tutorial/
 ├── README.md
 ├── requirements.txt
 ├── requirements-framework.txt  # 框架写法追加依赖（LlamaIndex / LangChain）
