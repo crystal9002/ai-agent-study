@@ -57,27 +57,46 @@ def main() -> None:
         print("  .venv/bin/python -m pip install -r requirements-framework.txt")
         sys.exit(1)
 
-    from llmops.sut_rag import generate, retrieve
+    from llmops.sut_rag import generate_with_usage, retrieve
 
     lf = Langfuse(public_key=pub, secret_key=sec, host=host)
     question = "智能云盘企业版支持单点登录吗？"
 
-    # 与 01_trace_demo.py 同构：trace → span(retrieve/generate) → generation
-    trace = lf.trace(name="langfuse_demo", input=question)
-    chunks = retrieve(question, k=3)
-    trace.span(name="retrieve", input={"query": question, "k": 3},
-               output=[c["id"] for c in chunks])
+    # 与 01_trace_demo.py 同构：trace(chain) → span(retriever) → generation
+    # langfuse ≥3.15 是 OTel 风格 API：start_as_current_observation 嵌套即父子关系，
+    # 退出上下文自动 end；输出/用量用 update_current_* 补写
+    with lf.start_as_current_observation(name="langfuse_demo", as_type="chain",
+                                         input=question):
+        chunks = retrieve(question, k=3)
+        with lf.start_as_current_observation(name="retrieve", as_type="retriever",
+                                             input={"query": question, "k": 3}):
+            lf.update_current_span(output=[c["id"] for c in chunks])
 
-    gen = trace.generation(name="generate", model=os.getenv("LLM_MODEL", "deepseek-chat"),
-                           input=question)
-    answer = generate(question, chunks)  # 注意：token 用量需在真实项目里手动 update(gen, usage=...)
-    gen.end(output=answer)
-    trace.update(output=answer)
+        answer, usage = generate_with_usage(question, chunks)
+        with lf.start_as_current_observation(name="generate", as_type="generation",
+                                             model=os.getenv("LLM_MODEL", "deepseek-chat"),
+                                             input=question):
+            # token 上报：usage_details 的 input/output 即 prompt/completion tokens
+            if usage:
+                lf.update_current_generation(output=answer, usage_details={
+                    "input": usage["prompt"],
+                    "output": usage["completion"],
+                })
+            else:
+                lf.update_current_generation(output=answer)
+        lf.update_current_trace(output=answer)
 
-    lf.flush()
+    try:
+        lf.flush()
+    except Exception as e:  # noqa: BLE001 —— 网络/鉴权失败不应让演示脚本崩栈
+        print(f"⚠️ 上报未成功（本地对象已就绪）：{type(e).__name__}: {e}")
+        print("  检查 LANGFUSE_HOST 与 Keys 后重试；trace 结构不受影响")
+        return
     print("已上报 Langfuse：")
     print(f"  trace 输入: {question}")
     print(f"  答案: {answer[:120]}")
+    if usage:
+        print(f"  token: prompt={usage['prompt']} completion={usage['completion']}")
     print(f"  查看: {host.rstrip('/')}/project → Traces → langfuse_demo")
 
 

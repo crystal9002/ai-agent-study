@@ -59,6 +59,19 @@ def generate(question: str, chunks: list[dict], trace: Trace | None = None) -> s
     return (msg.content or "").strip()
 
 
+def generate_with_usage(question: str, chunks: list[dict]) -> tuple[str, dict | None]:
+    """同 generate()，但额外返回 usage（prompt/completion token 数），供外部上报使用。"""
+    from llmops.llm import chat_with_usage
+
+    context = "\n".join(f"[{i+1}]（来源：{c['source']}）{c['content']}" for i, c in enumerate(chunks))
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": f"【资料】\n{context}\n\n【问题】\n{question}"},
+    ]
+    msg, usage = chat_with_usage(messages, temperature=0.2)
+    return (msg.content or "").strip(), usage
+
+
 def rag_query(question: str, k: int = 3, trace: Trace | None = None) -> dict:
     """完整一问：检索 + 生成。返回 {answer, retrieved: [chunk...]}。"""
     chunks = retrieve(question, k=k)

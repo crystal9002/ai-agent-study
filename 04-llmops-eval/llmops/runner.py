@@ -27,8 +27,11 @@ def load_jsonl(path: Path) -> list[dict]:
     return rows
 
 
-def run_rag_case(case: dict, use_judge: bool = True, k: int = 3, trace: Trace | None = None) -> dict:
-    """跑一条 RAG 用例并打分。"""
+def run_rag_case(case: dict, use_judge: bool = True, k: int = 3, trace: Trace | None = None,
+                 sut=None) -> dict:
+    """跑一条 RAG 用例并打分。sut 需实现 rag_query(question, k, trace=None)
+    -> {"retrieved": [{"id","content",...}], "answer": str}，默认用内置 sut_rag。"""
+    sut = sut or sut_rag
     qid, question = case["id"], case["question"]
     expected_chunks = case.get("expected_chunks", [])
     expected_contains = case.get("expected_answer_contains", [])
@@ -38,9 +41,9 @@ def run_rag_case(case: dict, use_judge: bool = True, k: int = 3, trace: Trace | 
         if trace:
             with trace.span(f"case:{qid}"):
                 with trace.span("rag_query", inputs=question):
-                    out = sut_rag.rag_query(question, k=k, trace=trace)
+                    out = sut.rag_query(question, k=k, trace=trace)
         else:
-            out = sut_rag.rag_query(question, k=k)
+            out = sut.rag_query(question, k=k)
     except Exception as e:  # noqa: BLE001
         return metrics.case_report(
             case_id=qid, passed=False, metrics={}, error=f"{type(e).__name__}: {e}",
@@ -109,12 +112,13 @@ def run_agent_case(case: dict, trace: Trace | None = None) -> dict:
     )
 
 
-def run_rag_eval(cases: list[dict], use_judge: bool = True, k: int = 3, name: str = "eval_rag") -> dict:
-    """全量跑 RAG golden set，返回可落盘的 run 记录。"""
+def run_rag_eval(cases: list[dict], use_judge: bool = True, k: int = 3,
+                 name: str = "eval_rag", sut=None) -> dict:
+    """全量跑 RAG golden set，返回可落盘的 run 记录。sut 同 run_rag_case。"""
     trace = Trace(name, meta={"model": __import__("os").getenv("LLM_MODEL", ""), "k": k, "judge": use_judge})
     results = []
     for i, case in enumerate(cases, 1):
-        r = run_rag_case(case, use_judge=use_judge, k=k, trace=trace)
+        r = run_rag_case(case, use_judge=use_judge, k=k, trace=trace, sut=sut)
         results.append(r)
         mark = "✓" if r["passed"] else "✗"
         print(f"  [{i}/{len(cases)}] {mark} {r['id']}"

@@ -77,7 +77,8 @@ class MCPClient:
         resp = await self._session.list_tools()
         return [
             {"name": t.name, "description": t.description or "",
-             "inputSchema": t.inputSchema}
+             # mcp 1.x 字段名 inputSchema；2.x 改为 input_schema（pydantic 属性）
+             "inputSchema": getattr(t, "inputSchema", None) or t.input_schema}
             for t in resp.tools
         ]
 
@@ -94,7 +95,8 @@ class MCPClient:
             if text is not None:
                 texts.append(text)
         raw = "\n".join(texts)
-        if result.isError:                     # server 端业务错误
+        # mcp 1.x 字段名 isError；2.x 改为 is_error（pydantic 属性）
+        if getattr(result, "isError", None) or getattr(result, "is_error", False):
             return {"error": raw or "未知工具错误"}
         try:
             parsed = json.loads(raw)           # 我们约定工具返回 JSON 文本

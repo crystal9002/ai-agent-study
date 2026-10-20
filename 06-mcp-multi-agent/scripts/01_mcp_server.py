@@ -24,7 +24,8 @@ async def list_and_print() -> None:
     tools = await mcp.list_tools()
     print("📋 已注册工具（stdio server 即将启动，Ctrl+C 退出）:", file=sys.stderr)
     for t in tools:
-        params = ", ".join(t.inputSchema.get("properties", {}).keys())
+        schema = getattr(t, "inputSchema", None) or t.input_schema  # mcp 2.x 改名
+        params = ", ".join(schema.get("properties", {}).keys())
         print(f"  - {t.name}({params})", file=sys.stderr)
         print(f"      {t.description}", file=sys.stderr)
 

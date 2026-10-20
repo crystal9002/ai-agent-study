@@ -188,16 +188,91 @@ WantedBy=multi-user.target
 
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable --now rag-web agent-web
-systemctl status rag-web agent-web
-journalctl -u rag-web -f        # 看日志
+sudo systemctl enable --now rag-web agent-web kb-agent-web eval-web sec-web mcp-web
+systemctl status rag-web agent-web kb-agent-web eval-web sec-web mcp-web
+journalctl -u rag-web -f        # 看日志（换 unit 名可看其他服务）
 ```
 
 > `EnvironmentFile` 会把 `.env` 注入进程环境；脚本内的 `load_dotenv()` 在变量已存在时不覆盖，两者不冲突。
 > 注意 `.env` 若含 `export ` 前缀或纯注释行以外的特殊写法，systemd 解析会报错——保持 `KEY=VALUE` 即可。
 
-> 03~06 的服务同方抓药：复制上面 unit，改 `WorkingDirectory` / `EnvironmentFile` / `ExecStart`
-> （入口与端口见 §1 服务概览表），如 `03-kb-web`、`04-eval-web`、`05-sec-web`、`06-mcp-web`。
+03~06 各一份 unit（模式与上相同：`WorkingDirectory` + `EnvironmentFile` + `ExecStart`）：
+
+`/etc/systemd/system/kb-agent-web.service`（03，需 HF 离线变量，先跑 `scripts/01_build_kb.py` 建库）：
+
+```ini
+[Unit]
+Description=Knowledge Base Agent Web (port 8002)
+After=network.target
+[Service]
+Type=simple
+User=www
+WorkingDirectory=/opt/ai-agent-study/03-knowledge-base-agent
+EnvironmentFile=/opt/ai-agent-study/03-knowledge-base-agent/.env
+Environment=HF_ENDPOINT=https://hf-mirror.com
+Environment=HF_HUB_OFFLINE=1
+Environment=TRANSFORMERS_OFFLINE=1
+ExecStart=/opt/ai-agent-study/03-knowledge-base-agent/.venv/bin/python scripts/03_web.py
+Restart=on-failure
+RestartSec=5
+TimeoutStartSec=120
+[Install]
+WantedBy=multi-user.target
+```
+
+`/etc/systemd/system/eval-web.service`（04，轻量无模型）：
+
+```ini
+[Unit]
+Description=LLMOps Eval Dashboard (port 8003)
+After=network.target
+[Service]
+Type=simple
+User=www
+WorkingDirectory=/opt/ai-agent-study/04-llmops-eval
+EnvironmentFile=/opt/ai-agent-study/04-llmops-eval/.env
+ExecStart=/opt/ai-agent-study/04-llmops-eval/.venv/bin/python scripts/05_web.py
+Restart=on-failure
+RestartSec=5
+[Install]
+WantedBy=multi-user.target
+```
+
+`/etc/systemd/system/sec-web.service`（05，轻量）：
+
+```ini
+[Unit]
+Description=Agent Security Approval Web (port 8004)
+After=network.target
+[Service]
+Type=simple
+User=www
+WorkingDirectory=/opt/ai-agent-study/05-agent-security
+EnvironmentFile=/opt/ai-agent-study/05-agent-security/.env
+ExecStart=/opt/ai-agent-study/05-agent-security/.venv/bin/python scripts/03_web.py
+Restart=on-failure
+RestartSec=5
+[Install]
+WantedBy=multi-user.target
+```
+
+`/etc/systemd/system/mcp-web.service`（06）：
+
+```ini
+[Unit]
+Description=MCP Multi-Agent Web (port 8005)
+After=network.target
+[Service]
+Type=simple
+User=www
+WorkingDirectory=/opt/ai-agent-study/06-mcp-multi-agent
+EnvironmentFile=/opt/ai-agent-study/06-mcp-multi-agent/.env
+ExecStart=/opt/ai-agent-study/06-mcp-multi-agent/.venv/bin/python scripts/04_web.py
+Restart=on-failure
+RestartSec=5
+[Install]
+WantedBy=multi-user.target
+```
 
 ## 8. Nginx 反向代理（SSE 关键配置）
 

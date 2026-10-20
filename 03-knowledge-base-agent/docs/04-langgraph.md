@@ -5,7 +5,7 @@
 
 ## 本课要点
 
-- `create_react_agent` = 别人替你写好的 `KBAgent.run`，**同一套循环，两种写法**
+- `create_agent` = 别人替你写好的 `KBAgent.run`，**同一套循环，两种写法**
 - 它内部就是一张 `StateGraph`：`agent` 节点（LLM）⇄ `tools` 节点（ToolNode），条件边决定去留
 - 框架会**并行执行同一批工具**——共享资源（本地模型）必须加锁，这是原生循环没有的坑
 
@@ -16,7 +16,7 @@
 | 工具注册 | `ToolRegistry` + `inspect` 手推 Schema | `@tool` / `tool(fn)` 装饰器（同一份函数） |
 | 工具描述 | docstring 即 description | docstring 即 description（一样） |
 | LLM 客户端 | `kba/llm.py` 手写 `OpenAI(...)` | `ChatOpenAI(model=…, base_url=…, api_key=…)` |
-| ReAct 循环 | `agent.py` 手写 40 行（for + tool 回填） | `create_react_agent(llm, tools, prompt=SYSTEM)` |
+| ReAct 循环 | `agent.py` 手写 40 行（for + tool 回填） | `create_agent(llm, tools, system_prompt=SYSTEM)` |
 | 消息历史管理 | 手工 `append` + `to_message()` | 图状态 `messages` 自动归并（add 通道） |
 | 终止 | `if not msg.tool_calls` + `max_iters` | 条件边：有 tool_calls → tools 节点，否则 END |
 | 事件回调 | `on_event` 自己发 | 节点粒度 hook / 流式 `astream_events`（本教程未用） |
@@ -57,12 +57,18 @@ tools = [tool(search_kb), tool(calc), tool(write_note), tool(list_notes)]
 llm = ChatOpenAI(model=os.getenv("LLM_MODEL"),
                  base_url=os.getenv("OPENAI_BASE_URL"),
                  api_key=os.getenv("OPENAI_API_KEY"))
-app = create_react_agent(llm, tools, prompt=SYSTEM)   # SYSTEM 与原生版一字不差
+app = create_agent(llm, tools, system_prompt=SYSTEM)   # SYSTEM 与原生版一字不差
 result = app.invoke({"messages": [("human", question)]})
 ```
 
-**`prompt=SYSTEM` 复用原生的证据合同**——这正说明：prompt 合同与循环实现是
+**`system_prompt=SYSTEM` 复用原生的证据合同**——这正说明：prompt 合同与循环实现是
 正交的两件事，换框架不用换合同。
+
+> API 演进：早期写法是 `langgraph.prebuilt.create_react_agent(llm, tools, prompt=...)`，
+> langgraph ≥ 1.0 起弃用，官方入口迁到 `langchain.agents.create_agent`（参数改名
+> `prompt` → `system_prompt`，需额外装 `langchain>=1.0`）。本教程直接用新 API。
+> 旧代码对照：`from langgraph.prebuilt import create_react_agent` + `prompt=SYSTEM` 仍能跑，
+> 只是每次打印 `LangGraphDeprecatedSinceV10` 警告。
 
 ## 四、框架带来的新坑（本教程实际踩到）
 
@@ -71,15 +77,16 @@ result = app.invoke({"messages": [("human", question)]})
    `Cannot copy out of meta tensor; no data!`。
    对策：`kba/kb.py` 用一把 `_LOCK`（RLock）把模型前向、索引懒加载串行化。
    **原生循环是 for 串行执行，天然没这个问题**——换框架时"并发语义"必须重新审。
-2. **弃用提醒**：langgraph ≥ 1.0 提示 `create_react_agent` 将迁移到
-   `langchain.agents.create_agent`，当前仍可用（脚本里会打印
-   `LangGraphDeprecatedSinceV10` 警告），逻辑不变，跟着迁移即可。
+2. **API 演进**：预构建 ReAct 的官方入口已从 `langgraph.prebuilt.create_react_agent`
+   迁到 `langchain.agents.create_agent`（`prompt` 参数改名 `system_prompt`）。
+   本教程脚本已用新 API；框架 API 的迁移节奏比手写循环快，这正是"合同与循环正交"
+   的现实收益——换入口不动业务。
 3. **安装顺序**：框架依赖装进同一个 `.venv`（`requirements-framework.txt`），
    两版脚本共享 `kba/` 与 `index/`，可直接 A/B 对比输出。
 
 ## 思考题
 
-1. `create_react_agent` 的 `recursion_limit` 与原生 `max_iters=6`，语义完全等价吗？
+1. `create_agent` 的 `recursion_limit` 与原生 `max_iters=6`，语义完全等价吗？
 2. 为什么把 `search_kb` 底层继续指向 `kba/kb.py`，而不是在 LangChain 里重写检索？
 3. 想给框架版也接上 Web 的实时事件，你会选哪个机制？（提示：流式 API）
 

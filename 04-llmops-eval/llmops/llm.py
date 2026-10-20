@@ -43,4 +43,21 @@ def chat(
     resp = _get_client().chat.completions.create(**kwargs)
     if trace is not None and resp.usage:
         trace.add_usage(resp.usage.prompt_tokens or 0, resp.usage.completion_tokens or 0, model)
+    if getattr(resp, "usage", None):
+        chat.last_usage = {
+            "model": model,
+            "prompt": resp.usage.prompt_tokens or 0,
+            "completion": resp.usage.completion_tokens or 0,
+        }
+    else:
+        chat.last_usage = None
     return resp.choices[0].message
+
+
+chat.last_usage = None
+
+
+def chat_with_usage(messages: list[dict], **kwargs) -> tuple[object, dict | None]:
+    """同 chat()，但返回 (message, usage_dict) —— 供外部上报（如 Langfuse）使用。"""
+    msg = chat(messages, **kwargs)
+    return msg, chat.last_usage

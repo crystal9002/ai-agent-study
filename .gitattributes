@@ -1,0 +1,5 @@
+# 统一 LF，消除 Windows/老 git 配置（core.autocrlf）带来的换行转换
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.ico binary

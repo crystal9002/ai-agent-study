@@ -4,7 +4,7 @@
     kba/kb.py     → 原样复用（检索层与框架无关，@tool 只做包装）
     kba/tools.py  → @tool 装饰器（Schema 仍由签名 + docstring 自动推导）
     kba/llm.py    → ChatOpenAI(base_url/api_key/model 读 .env)
-    kba/agent.py  → create_react_agent（手写 ReAct 循环的框架等价物）
+    kba/agent.py  → create_agent（手写 ReAct 循环的框架等价物）
 
 用法：
     pip install -r requirements-framework.txt
@@ -21,9 +21,9 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 try:
+    from langchain.agents import create_agent
     from langchain_core.tools import tool
     from langchain_openai import ChatOpenAI
-    from langgraph.prebuilt import create_react_agent
 except ImportError as e:  # 缺依赖时给出可直接复制的修复命令
     print(f"❌ 缺少框架依赖: {e}")
     print("请先安装：.venv/bin/python -m pip install -r requirements-framework.txt")
@@ -51,7 +51,7 @@ def main() -> None:
     print(f"❓ 问题: {question}")
     print("-" * 60)
     try:
-        app = create_react_agent(llm, tools, prompt=SYSTEM)
+        app = create_agent(llm, tools, system_prompt=SYSTEM)
         result = app.invoke({"messages": [("human", question)]})
     except Exception as e:  # noqa: BLE001
         print(f"❌ 运行失败: {type(e).__name__}: {e}")

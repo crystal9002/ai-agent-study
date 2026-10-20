@@ -92,6 +92,14 @@ API：`GET /api/approvals` · `POST /api/approvals/{id}` · `GET /api/audit`。
 python scripts/04_framework.py   # 原生正则 vs guardrails Validator，含混淆矩阵与取舍结论
 ```
 
+### 6. 红队回归（CI 门禁）
+
+```bash
+python scripts/05_redteam_regression.py   # 10 项硬断言，exit 0/1，无需 LLM key
+```
+
+与 `01_attack_demo.py` 同口径但零演示输出：注入检测器单测（命中/不出网误报/密钥外发载荷）+ 3 场景加固拦截 + 裸 Agent 中招哨兵（防 payload 腐化假通过）。适合接进 CI 或 pre-commit。
+
 ## 项目结构
 
 ```
@@ -113,7 +121,8 @@ python scripts/04_framework.py   # 原生正则 vs guardrails Validator，含混
 │   ├── 01_attack_demo.py         # 对照演示（默认确定性断言，--live 接真实 LLM）
 │   ├── 02_secure_agent.py        # CLI 安全 Agent（--policy strict/auto/interactive）
 │   ├── 03_web.py                 # FastAPI 8004：SSE 执行流 + 审批 API + 审计 API
-│   └── 04_framework.py           # guardrails 对照（同一特征库、混淆矩阵、取舍结论）
+│   ├── 04_framework.py           # guardrails 对照（同一特征库、混淆矩阵、取舍结论）
+│   └── 05_redteam_regression.py  # 红队回归（CI 门禁版：10 项硬断言，exit code）
 ├── web/index.html                # 三栏前端（原生 JS，无构建）
 ├── audit/                        # 运行产物：audit.log / approvals.jsonl（已 gitignore）
 └── docs/                         # 6 篇教程（按学习路径阅读）

@@ -1,5 +1,6 @@
 # 框架对照版（在原生依赖之上追加安装）
 # .venv/bin/python -m pip install -r requirements.txt -r requirements-framework.txt
 langgraph>=0.2.0
+langchain>=1.0.0
 langchain-openai>=0.2.0
 langchain-core>=0.3.0

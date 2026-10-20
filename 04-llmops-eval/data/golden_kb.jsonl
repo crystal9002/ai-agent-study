@@ -1,0 +1,10 @@
+{"id": "kb-01", "type": "qa", "question": "星云笔记团队版多少钱一个人一个月？", "expected_chunks": ["25 元", "团队版"], "expected_answer_contains": ["25"]}
+{"id": "kb-02", "type": "qa", "question": "团队版年付有什么折扣？", "expected_chunks": ["年付", "8 折"], "expected_answer_contains": ["8 折"]}
+{"id": "kb-03", "type": "retrieval", "question": "团队空间最多可以有多少成员？", "expected_chunks": ["50 人"], "expected_answer_contains": []}
+{"id": "kb-04", "type": "qa", "question": "免费版单篇附件上限是多少？", "expected_chunks": ["20 MB", "免费版"], "expected_answer_contains": ["20 MB"]}
+{"id": "kb-05", "type": "qa", "question": "API 的限流是多少，团队版每秒可以请求几次？", "expected_chunks": ["60 次/秒", "令牌桶"], "expected_answer_contains": ["60"]}
+{"id": "kb-06", "type": "retrieval", "question": "语义检索哪个版本才支持？", "expected_chunks": ["语义检索", "企业版"], "expected_answer_contains": []}
+{"id": "kb-07", "type": "qa", "question": "回收站的笔记保留多少天？", "expected_chunks": ["30 天", "回收站"], "expected_answer_contains": ["30"]}
+{"id": "kb-08", "type": "qa", "question": "API 用什么方式认证？Token 有效期多久？", "expected_chunks": ["Bearer", "2 小时"], "expected_answer_contains": ["Bearer"]}
+{"id": "kb-09", "type": "retrieval", "question": "笔记之间怎么互相引用，会生成什么视图？", "expected_chunks": ["双向链接", "知识图谱"], "expected_answer_contains": []}
+{"id": "kb-10", "type": "qa", "question": "教育组织认证后团队版打几折？", "expected_chunks": ["5 折", "教育"], "expected_answer_contains": ["5 折"]}

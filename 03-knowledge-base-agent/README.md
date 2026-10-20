@@ -86,7 +86,7 @@ uv pip install -q -p .venv/bin/python -r requirements-framework.txt
 │   ├── 01_build_kb.py         # 建索引（离线）
 │   ├── 02_kb_agent.py         # CLI：工具轨迹 + 带引用回答
 │   ├── 03_web.py              # FastAPI + SSE（端口 8002，事件 start/tool_call/tool_result/final）
-│   ├── 04_langgraph.py        # 框架对照：create_react_agent + @tool
+│   ├── 04_langgraph.py        # 框架对照：create_agent + @tool
 │   └── output/                # Agent 写入的笔记（write_note 产物）
 ├── web/                       # 单页前端（原生 HTML/JS，无构建步骤）
 ├── index/                     # 生成的向量索引（不入库）

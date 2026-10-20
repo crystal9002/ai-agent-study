@@ -33,9 +33,10 @@
 .venv/bin/python scripts/06_langfuse.py
 ```
 
-没配 keys 时脚本**打印接入指引后优雅退出（exit 0）**——CI/共享环境里不会因为缺配置炸掉。配好后跑一条与 `01_trace_demo.py` 同构的迷你 RAG 链，`trace.generation()` 上报生成环节，Langfuse UI 的 Traces 里就能看到同样的树。
+没配 keys 时脚本**打印接入指引后优雅退出（exit 0）**——CI/共享环境里不会因为缺配置炸掉。配好后跑一条与 `01_trace_demo.py` 同构的迷你 RAG 链，generation 环节连同 token 用量一起上报（`update_current_generation(usage_details={"input": prompt, "output": completion})`），Langfuse UI 的 Traces 里就能看到同样的树。
 
-结构对齐的关键就在 `06_langfuse.py` 里那几行：`lf.trace()` 对应 `Trace()`，`trace.span()` 对应 `tr.span()`，`trace.generation(model=...)` 对应生成环节的 span + usage。**概念一一映射，迁移只是换 API 名。**
+结构对齐的关键就在 `06_langfuse.py` 里那几行：`start_as_current_observation(as_type="chain")` 对应 `Trace()`，`as_type="retriever"` 对应 `tr.span()`，`as_type="generation", model=...` 对应生成环节 + usage。**概念一一映射，迁移只是换 API 名。**
+注意 langfuse SDK 演进快：4/5.x 进一步改版，本教程钉在 `>=3.15,<4`（见 requirements-framework.txt 注释）；换平台版本前先对着官方 changelog 核对这三个入口名。
 
 ## OpenTelemetry 思路（平台无关的第三条路）
 

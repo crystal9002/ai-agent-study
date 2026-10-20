@@ -3,7 +3,10 @@ openai>=1.30.0
 python-dotenv>=1.0.0
 fastapi>=0.110.0
 uvicorn>=0.29.0
-# 锁 1.x + cryptography<45：mcp 经 pyjwt[crypto] 间接依赖 cryptography，
-# 其 45+ 版本在本机可能无预编译 wheel、源码编译又需新版 cargo，故锁定
-mcp>=1.0.0,<2
+# 锁 <3：mcp 1.x 与 2.x 我们都兼容（server/client 里做了 FastMCP→MCPServer、
+# inputSchema→input_schema、isError→is_error 的双版本兼容；2.3.0 实测通过）。
+# cryptography<45：mcp 经 pyjwt[crypto] 间接依赖 cryptography；截至 2026-10，
+# 45+ 在本机（Intel macOS / py3.12）无预编译 wheel、源码编译又需新版 cargo，
+# 故仍锁定——最后可用版本为 44.0.3。Apple Silicon 无此问题，可自行放宽。
+mcp>=1.0.0,<3
 cryptography<45

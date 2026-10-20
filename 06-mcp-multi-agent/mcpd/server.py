@@ -29,7 +29,10 @@ import operator
 from datetime import datetime
 from pathlib import Path
 
-from mcp.server.fastmcp import FastMCP
+try:
+    from mcp.server.fastmcp import FastMCP
+except ModuleNotFoundError:  # mcp 2.x：FastMCP 更名为 MCPServer（API 兼容，见官方迁移指南）
+    from mcp.server.mcpserver import MCPServer as FastMCP
 
 import sys
 _ROOT = str(Path(__file__).resolve().parent.parent)

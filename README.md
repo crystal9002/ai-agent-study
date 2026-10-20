@@ -133,6 +133,11 @@ python scripts/04_web.py                                    # 泳道可视化 �
 
 共用约定：`.env` 配置通用（OPENAI_BASE_URL / OPENAI_API_KEY / LLM_MODEL），LLM 封装风格一致，Web 界面均为 FastAPI + SSE、按端口 8000~8005 区分。
 
+## 理论文档（配套阅读）
+
+动手之外的概念底座在 [AI-Agent开发教程/](AI-Agent开发教程/)：001 Agent 循环 → 002 Function Calling → 003 MCP → 004 规划分解 → 005 记忆 → 006 多智能体 → 007 上下文工程 → 008 可靠性 → 009 评估观测 → 010 手写 ReAct → 011 学习路径 → 012 进阶练习（另见 [学习笔记](AI-Agent-开发学习笔记.md)）。
+建议节奏：先读对应概念课（如 003 → 06 教程），再跑教程代码。
+
 ## 环境要求
 
 - Python 3.10+
